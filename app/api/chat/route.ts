@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamMiniMaxReply } from "@/lib/minimax";
 import { buildSystemPrompt } from "@/lib/prompt";
-import { buildRAGContext } from "@/lib/rag";
+import { hybridSearch } from "@/lib/rag";
 
 export const runtime = "edge";
 
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
     const userMessage = rawMessages[rawMessages.length - 1]?.content || "";
     const intensity = body.intensity ?? 0.5;
 
-    const ragContext = buildRAGContext(userMessage);
+    // 使用混合搜索（语义 + 关键词）
+    const ragContext = await hybridSearch(userMessage, 5);
     
     const systemPrompt = buildSystemPrompt({
       context: ragContext,

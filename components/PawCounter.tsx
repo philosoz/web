@@ -1,34 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface PawCounterProps {
   initialCount?: number;
   showAddOne?: boolean;
+  onCountUpdate?: (count: number) => void;
 }
 
-export default function PawCounter({ initialCount = 128, showAddOne = false }: PawCounterProps) {
-  const [count, setCount] = useState(initialCount);
-  const [displayCount, setDisplayCount] = useState(initialCount);
+export default function PawCounter({ initialCount = 128, showAddOne = false, onCountUpdate }: PawCounterProps) {
   const [showPlus, setShowPlus] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/paw")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.count !== undefined) {
-          setCount(data.count);
-          setDisplayCount(data.count);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const addOne = () => {
-    setCount((c) => c + 1);
-    setDisplayCount((c) => c + 1);
+  const handleAdd = () => {
     setShowPlus(true);
+    onCountUpdate?.(initialCount + 1);
 
     setTimeout(() => setShowPlus(false), 800);
   };
@@ -36,7 +22,7 @@ export default function PawCounter({ initialCount = 128, showAddOne = false }: P
   return (
     <div className="relative text-sm text-gray-600 bg-white px-4 py-2 rounded-lg shadow-md">
       <div className="flex items-center gap-2">
-        <span>今天有 {displayCount} 只小狗来过</span>
+        <span>今天有 {initialCount} 只小狗来过</span>
         <span className="text-lg">🐾</span>
       </div>
 
@@ -56,7 +42,7 @@ export default function PawCounter({ initialCount = 128, showAddOne = false }: P
 
       {showAddOne && (
         <button
-          onClick={addOne}
+          onClick={handleAdd}
           className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
           aria-label="Add paw"
         />

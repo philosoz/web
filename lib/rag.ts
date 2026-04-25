@@ -1,3 +1,8 @@
+// RAG 模块 - 支持向量检索和关键词检索的混合搜索
+
+import { VectorStore, type Document } from './vector-store';
+import { formatIdentityProfile } from '../data/identity-profile';
+
 export interface Post {
   id: string;
   title: string;
@@ -8,6 +13,85 @@ export interface Post {
   excerpt?: string;
 }
 
+// 初始化向量存储实例
+let vectorStore: VectorStore | null = null;
+let isInitialized = false;
+
+// 初始化 RAG 系统
+export async function initializeRAG(): Promise<void> {
+  if (isInitialized) return;
+  
+  vectorStore = new VectorStore();
+  
+  // 添加个人身份画像
+  await vectorStore.addDocument({
+    title: "个人身份画像",
+    content: formatIdentityProfile(),
+    category: "identity",
+    tags: ["个人", "背景", "身份", "自我介绍"],
+  });
+  
+  // 添加所有文章
+  for (const post of posts) {
+    await vectorStore.addDocument({
+      title: post.title,
+      content: post.content,
+      category: post.category,
+      tags: post.tags,
+      metadata: {
+        date: post.date,
+        excerpt: post.excerpt,
+      },
+    });
+  }
+  
+  isInitialized = true;
+  console.log(`RAG initialized with ${vectorStore.getDocumentCount()} documents`);
+}
+
+// 获取向量存储实例
+function getVectorStore(): VectorStore {
+  if (!vectorStore) {
+    vectorStore = new VectorStore();
+    // 同步初始化（简化版）
+    initializeRAGSync();
+  }
+  return vectorStore;
+}
+
+// 同步初始化（备用）
+function initializeRAGSync(): void {
+  if (isInitialized) return;
+  
+  const store = new VectorStore();
+  
+  // 添加个人身份画像
+  store.addDocument({
+    title: "个人身份画像",
+    content: formatIdentityProfile(),
+    category: "identity",
+    tags: ["个人", "背景", "身份", "自我介绍"],
+  });
+  
+  // 添加所有文章
+  for (const post of posts) {
+    store.addDocument({
+      title: post.title,
+      content: post.content,
+      category: post.category,
+      tags: post.tags,
+      metadata: {
+        date: post.date,
+        excerpt: post.excerpt,
+      },
+    });
+  }
+  
+  vectorStore = store;
+  isInitialized = true;
+}
+
+// 原有文章数据
 export const posts: Post[] = [
   {
     id: "1",
@@ -66,7 +150,7 @@ export const posts: Post[] = [
   {
     id: "7",
     title: "日常观察：城市里的陌生人",
-    content: "我有一个小习惯，观察身边的陌生人。\n\n坐地铁的时候，我喜欢看车厢里的人。看他们表情各异的样子，猜测他们刚从哪里来、要往哪里去。有人在刷手机，有人在发呆，有人抱着书在看，有人戴着耳机沉浸在自己的世界里。每个人都有自己的故事，只是我们永远不会知道。\n\n周末去菜市场也很有意思。摊主们的吆喝声此起彼伏，买菜的大爷大妈们精挑细选。有时候会看到老人认真地挑选蔬菜，那种仔细劲儿好像在挑选什么珍贵的宝贝。我想，他们大概是在认真生活了一辈子之后，养成了这种习惯吧。\n\n写字楼旁边的早餐摊也很有意思。每天早上都有很多人在排队买早餐，每个人都行色匆匆。但偶尔会看到有人端着豆浆站在路边慢慢地喝，好像那五分钟的悠闲比准时打卡更重要。\n\n这些观察让我觉得，城市虽然冷漠，但生活在其中的人都有自己的温度。每个人都在认真地活着，哪怕只是为了赶一趟地铁、买一份早餐。\n\n这种观察让我对生活多了一份敬畏。",
+    content: "我有一个小习惯，观察身边的陌生人。\n\n坐地铁的时候，我喜欢看车厢里的人。看他们表情各异的样子，猜测他们刚从哪里来，要往哪里去。有人在刷手机，有人在发呆，有人抱着书在看，有人戴着耳机沉浸在自己的世界里。每个人都有自己的故事，只是我们永远不会知道。\n\n周末去菜市场也很有意思。摊主们的吆喝声此起彼伏，买菜的大爷大妈们精挑细选。有时候会看到老人认真地挑选蔬菜，那种仔细劲儿好像在挑选什么珍贵的宝贝。我想，他们大概是在认真生活了一辈子之后，养成了这种习惯吧。\n\n写字楼旁边的早餐摊也很有意思。每天早上都有很多人在排队买早餐，每个人都行色匆匆。但偶尔会看到有人端着豆浆站在路边慢慢地喝，好像那五分钟的悠闲比准时打卡更重要。\n\n这些观察让我觉得，城市虽然冷漠，但生活在其中的人都有自己的温度。每个人都在认真地活着，哪怕只是为了赶一趟地铁、买一份早餐。\n\n这种观察让我对生活多了一份敬畏。",
     category: "笔记",
     tags: ["日常观察", "城市生活", "人", "思考"],
     date: "2024-11-03",
@@ -84,7 +168,7 @@ export const posts: Post[] = [
   {
     id: "9",
     title: "关于选择的一些思考",
-    content: "人生充满了选择。小到今天吃什么，大到选择什么样的工作、和什么样的人共度一生。我们每天都在做选择，但好像从来没人教过我们怎么做好选择。\n\n我以前是一个很纠结的人。买东西会纠结很久，看电影选座位要纠结半天，更别说人生大事了。这种纠结的本质其实是害怕。害怕选错了，害怕错过更好的选项。\n\n后来我想明白一件事：选择本身没有绝对的对错。每一个选择都意味着放弃其他可能性，但这不意味着被放弃的选项就一定更好。很多时候，我们只是站在自己现在的位置，幻想另一条路的风景罢了。\n\n做好选择的关键不是选\"对的\"，而是选完之后好好经营自己的选择。选择之前可以慎重，选择之后就应该往前看。总是在后悔的人，过不好这一生。\n\n还有一个感悟是：不是所有选择都需要深思熟虑。有些小事，随便选一个就好。把精力留给真正重要的选择，比在所有事情上都纠结要明智得多。\n\n学会选择，也是学会放弃。",
+    content: "人生充满了选择。小到今天吃什么，大到选择什么样的工作，和什么样的人共度一生。我们每天都在做选择，但好像从来没人教过我们怎么做好选择。\n\n我以前是一个很纠结的人。买东西会纠结很久，看电影选座位要纠结半天，更别说人生大事了。这种纠结的本质其实是害怕。害怕选错了，害怕错过更好的选项。\n\n后来我想明白一件事：选择本身没有绝对的对错。每一个选择都意味着放弃其他可能性，但这不意味着被放弃的选项就一定更好。很多时候，我们只是站在自己现在的位置，幻想另一条路的风景罢了。\n\n做好选择的关键不是选\"对的\"，而是选完之后好好经营自己的选择。选择之前可以慎重，选择之后就应该往前看。总是在后悔的人，过不好这一生。\n\n还有一个感悟是：不是所有选择都需要深思熟虑。有些小事，随便选一个就好。把精力留给真正重要的选择，比在所有事情上都纠结要明智得多。\n\n学会选择，也是学会放弃。",
     category: "笔记",
     tags: ["选择", "思考", "人生", "决策"],
     date: "2024-12-15",
@@ -93,7 +177,7 @@ export const posts: Post[] = [
   {
     id: "10",
     title: "坚持的意义",
-    content: "我一直觉得自己不是一个有毅力的人。很多事情都是三分钟热度，开始的时候信誓旦旦，过不了多久就放弃了。\n\n但最近几年，我慢慢找到了一些能够坚持下来的事情。阅读、运动、写东西，这些习惯我已经保持了比较长的时间。回过头看，它们确实改变了我很多。\n\n关于坚持，我有一个感悟：不要把目标定得太高。以前我总是给自己定一些宏大的目标，比如\"每天学习两小时\"、\"一年读100本书\"。这种目标听起来很励志，但执行起来很难。一旦哪天没做到，就容易破罐子破摔，干脆不做了。\n\n现在的我会把目标定得很低，低到不可能失败。比如每天读一页书、每天写50个字。听起来很可笑对不对？但就是这种微小的目标，让我能够持续地做下去。因为门槛太低，所以不会有心理负担。因为一直在做，所以会慢慢形成习惯。\n\n坚持的另一个关键是找到意义。如果一件事对你来说没有意义，很难长期做下去。我能够坚持阅读和写东西，是因为它们真的让我感到充实，让我成为更好的人。这种内在的驱动力，比任何外在的奖励都可靠。\n\n坚持不是苦行僧式的坚持，而是找到适合自己的节奏。",
+    content: "我一直觉得自己不是一个有毅力的人。很多事情都是三分钟热度，开始的时候信誓旦旦，过不了多久就放弃了。\n\n但最近几年，我慢慢找到了一些能够坚持下来的事情。阅读、运动，写东西，这些习惯我已经保持了比较长的时间。回过头看，它们确实改变了我很多。\n\n关于坚持，我有一个感悟：不要把目标定得太高。以前我总是给自己定一些宏大的目标，比如\"每天学习两小时\"、\"一年读100本书\"。这种目标听起来很励志，但执行起来很难，一旦哪天没做到，就容易破罐子破摔，干脆不做了。\n\n现在的我会把目标定得很低，低到不可能失败。比如每天读一页书、每天写50个字。听起来很可笑对不对？但就是这种微小的目标，让我能够持续地做下去。因为门槛太低，所以不会有心理负担。因为一直在做，所以会慢慢形成习惯。\n\n坚持的另一个关键是找到意义。如果一件事对你来说没有意义，很难长期做下去。我能够坚持阅读和写东西，是因为它们真的让我感到充实，让我成为更好的人。这种内在的驱动力，比任何外在的奖励都可靠。\n\n坚持不是苦行僧式的坚持，而是找到适合自己的节奏。",
     category: "笔记",
     tags: ["坚持", "习惯", "成长", "自我成长"],
     date: "2025-01-10",
@@ -101,6 +185,7 @@ export const posts: Post[] = [
   },
 ];
 
+// 关键词检索（原有功能）
 export function findRelevantPosts(query: string): Post[] {
   const queryWords = query.toLowerCase().split(/\s+/);
   
@@ -129,6 +214,7 @@ export function findRelevantPosts(query: string): Post[] {
     .map(s => s.post);
 }
 
+// 构建 RAG 上下文（原有功能）
 export function buildRAGContext(query: string): string {
   const relevantPosts = findRelevantPosts(query);
   
@@ -139,4 +225,55 @@ export function buildRAGContext(query: string): string {
   return relevantPosts
     .map(post => `[${post.title}]\n${post.content}`)
     .join("\n\n");
+}
+
+// 语义搜索（新增功能）
+export async function semanticSearch(query: string, topK: number = 5): Promise<Document[]> {
+  try {
+    const store = getVectorStore();
+    return await store.hybridSearch(query, topK);
+  } catch (error) {
+    console.error('Semantic search failed:', error);
+    return [];
+  }
+}
+
+// 构建语义上下文（新增功能）
+export async function buildSemanticContext(query: string): Promise<string> {
+  const results = await semanticSearch(query, 5);
+  
+  if (results.length === 0) {
+    return "";
+  }
+  
+  const formattedResults = results.map(item => {
+    if (item.category === 'identity') {
+      return `[个人背景]\n${item.content}`;
+    }
+    return `[${item.title}]\n${item.content}`;
+  });
+  
+  return formattedResults.join("\n\n");
+}
+
+// 安全的上下文构建（混合模式）
+export async function buildContextSafely(query: string): Promise<string> {
+  try {
+    // 优先尝试语义搜索
+    const semanticContext = await buildSemanticContext(query);
+    if (semanticContext) {
+      return semanticContext;
+    }
+  } catch (error) {
+    console.error('Semantic context build failed, falling back to keyword:', error);
+  }
+  
+  // 回退到关键词搜索
+  return buildRAGContext(query);
+}
+
+// 混合搜索（推荐使用）
+export async function hybridSearch(query: string, topK: number = 3): Promise<string> {
+  // topK 参数传递给 buildContextSafely 用于控制检索数量
+  return await buildContextSafely(query);
 }

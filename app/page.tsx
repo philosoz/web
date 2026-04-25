@@ -35,6 +35,10 @@ export default function HomePage() {
     }
   }, []);
 
+  const handleCountUpdate = useCallback((count: number) => {
+    setPawCount(count);
+  }, []);
+
   return (
     <div className="min-h-screen">
       <header className="flex justify-between items-center px-8 py-6 max-w-7xl mx-auto">
@@ -79,7 +83,7 @@ export default function HomePage() {
           <div className="relative">
             <PawInteraction onAddOne={handlePawClick} />
             <div className="absolute bottom-4 right-4">
-              <PawCounter initialCount={pawCount} />
+              <PawCounter initialCount={pawCount} onCountUpdate={handleCountUpdate} />
             </div>
           </div>
         </FadeInSection>
