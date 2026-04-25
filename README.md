@@ -1,92 +1,145 @@
-# MiniMax Chat Studio
+# 张海挺的个人博客
 
-一个可部署的 MiniMax 聊天网站，基于 `Next.js 15 + TypeScript + App Router` 构建，后端通过服务端路由安全调用 MiniMax Anthropic 兼容接口，并把上游流式响应转成前端实时可渲染的文本流。
+一个温暖、克制、有思考力的个人网站，包含 AI 对话功能。
 
-## 功能概览
+## 🚀 快速开始
 
-- 可直接部署到 Vercel
-- 支持多轮聊天
-- 支持 Anthropic 兼容流式输出
-- API Key 仅保存在服务端环境变量中
-- 首页已升级为更适合上线展示的产品落地页
-
-## 本地启动
-
-1. 安装依赖
-2. 创建 `.env.local`
-3. 配置环境变量
-4. 启动开发环境
+### 1. 安装依赖
 
 ```bash
 npm install
+```
+
+### 2. 配置环境变量
+
+复制 `.env.example` 为 `.env.local`：
+
+```bash
+cp .env.example .env.local
+```
+
+然后填写必要的配置：
+
+```env
+# MiniMax API (AI 对话功能)
+MINIMAX_API_KEY=your_api_key_here
+```
+
+### 3. 启动开发服务器
+
+```bash
 npm run dev
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)。
+打开 [http://localhost:3000](http://localhost:3000) 查看网站。
 
-## 环境变量
+## 🎯 功能
 
-```bash
-MINIMAX_API_KEY=your_new_minimax_api_key
-MINIMAX_MODEL=MiniMax-M2.1
+- **首页**: 展示个人 IP 和最新文章
+- **AI 对话**: 与"数字分身"聊天，了解作者的想法
+- **爪印互动**: 点击留下爪印，记录互动
+- **笔记/技术**: 查看文章列表和详情
+- **简历**: 展示个人经历和技能
+- **关于**: 个人介绍和联系方式
+
+## 🛠️ 技术栈
+
+- **框架**: Next.js 15 (App Router)
+- **语言**: TypeScript
+- **样式**: Tailwind CSS
+- **动效**: Framer Motion
+- **AI**: MiniMax API (兼容 Anthropic)
+- **存储**: 支持多种云存储方案
+- **部署**: Vercel
+
+## 📝 简历上传配置
+
+### 支持的存储方案
+
+#### 1. Base64 (默认，无需配置)
+适合本地开发和演示
+```env
+UPLOAD_PROVIDER=base64
 ```
 
-建议重新生成一枚新的 API Key 再用于部署，因为旧 Key 已经在对话里暴露过。
+#### 2. Vercel Blob (推荐用于 Vercel 部署)
+```env
+UPLOAD_PROVIDER=vercel-blob
+BLOB_READ_WRITE_TOKEN=your_token
+```
 
-## 项目结构
+#### 3. AWS S3
+```env
+UPLOAD_PROVIDER=aws-s3
+AWS_REGION=ap-northeast-1
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_BUCKET_NAME=your_bucket
+```
 
-```text
+#### 4. Cloudflare R2 (S3 兼容，免费额度大)
+```env
+UPLOAD_PROVIDER=cloudflare-r2
+R2_BUCKET_ID=your_bucket_id
+R2_PUBLIC_URL=https://your-public-url.r2.dev
+```
+
+## 📝 发布文章
+
+目前使用占位文章，后期将集成 Notion API。
+
+## 🎨 自定义
+
+### 修改 AI 人格
+
+编辑 `app/api/chat/route.ts` 中的 `SYSTEM_PROMPT`。
+
+### 修改简历
+
+编辑 `app/resume/page.tsx` 中的内容。
+
+### 修改文章
+
+编辑对应的页面文件中的 posts 数组。
+
+## 🚀 部署到 Vercel
+
+1. 将代码推送到 GitHub
+2. 在 Vercel 中导入项目
+3. 配置环境变量：
+   - `MINIMAX_API_KEY`
+   - `MINIMAX_MODEL`
+   - `UPLOAD_PROVIDER` (根据选择的存储方案)
+4. 部署！
+
+## 📦 项目结构
+
+```
 app/
-  api/chat/route.ts   # 服务端聊天流接口
-  globals.css         # 全局样式
-  layout.tsx          # 页面布局
-  page.tsx            # 首页落地页
+  page.tsx          # 首页
+  chat/page.tsx     # AI 对话页
+  notes/page.tsx     # 笔记列表
+  tech/page.tsx     # 技术文章列表
+  about/page.tsx     # 关于我
+  resume/
+    page.tsx        # 简历
+    upload/page.tsx  # 简历上传
+
 components/
-  chat-panel.tsx      # 聊天界面
+  ai/
+    useChat.ts
+    ChatMessage.tsx
+    ChatInput.tsx
+    TypingIndicator.tsx
+
 lib/
-  minimax.ts          # MiniMax Anthropic 流式请求封装
+  minimax.ts       # MiniMax API 封装
+
+app/api/
+  chat/route.ts    # AI 对话 API
+  resume/upload/route.ts  # 简历上传 API
 ```
 
-## MiniMax 接入说明
+## 📄 许可证
 
-- Endpoint: `https://api.minimaxi.com/anthropic/v1/messages`
-- Auth: `Authorization: Bearer <token>`
-- 站点通过服务端读取 `MINIMAX_API_KEY`，浏览器不会暴露密钥
-- 当前默认模型为 `MiniMax-M2.1`，你也可以替换为 `MiniMax-M2.5` 或 `MiniMax-M2.7`
-
-## Vercel 部署清单
-
-1. 把项目推到 GitHub、GitLab 或 Bitbucket。
-2. 在 Vercel Dashboard 点击 `New Project` 并导入仓库。
-3. 确认 Framework Preset 识别为 `Next.js`。
-4. Root Directory 保持项目根目录。
-5. 在 Project Settings 里添加环境变量：
-   `MINIMAX_API_KEY`
-   `MINIMAX_MODEL`
-6. 至少为 `Production` 和 `Preview` 两个环境都配置变量。
-7. 点击 `Deploy` 完成首次部署。
-8. 首次部署成功后，到 `Settings -> Domains` 绑定正式域名。
-9. 如果使用根域名，补好 apex 记录；如果使用子域名，补好 CNAME 记录。
-10. 如需本地和 Vercel 保持一致，可用 `vercel env pull` 拉取开发环境变量。
-
-## 上线前检查项
-
-1. 立即轮换已经暴露的 MiniMax API Key。
-2. 确认 `.env.local` 没有被提交到仓库。
-3. 运行 `npm run build` 与 `npm run lint`，确保本地为绿色。
-4. 在 Preview Deployment 里测试至少一轮真实聊天。
-5. 检查流式输出时消息是否持续更新，而不是等到结束后一次性出现。
-6. 检查移动端输入框、滚动区域、长消息换行是否正常。
-7. 检查当 MiniMax 返回错误时，页面是否能显示错误提示。
-8. 绑定正式域名后确认根域名、`www` 和目标主域名的跳转关系。
-9. 上线后再做一次生产环境实测，确认 `Production` 环境变量已生效。
-
-## 官方文档
-
-- MiniMax 文档索引: [llms.txt](https://platform.minimaxi.com/docs/llms.txt)
-- MiniMax Anthropic API 兼容: [text-anthropic-api](https://platform.minimaxi.com/docs/api-reference/text-anthropic-api)
-- MiniMax 接口概览: [api-overview](https://platform.minimaxi.com/docs/api-reference/api-overview)
-- Vercel Git 部署: [Deploying Git Repositories](https://vercel.com/docs/deployments/git)
-- Vercel 环境变量: [Environment variables](https://vercel.com/docs/environment-variables)
-- Vercel 项目设置: [Project settings](https://vercel.com/docs/project-configuration/project-settings)
-- Vercel 自定义域名: [Add a domain](https://vercel.com/docs/getting-started-with-vercel/domains)
+MIT
