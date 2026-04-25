@@ -36,10 +36,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const timestamp = Date.now();
-    const extension = file.name.split(".").pop();
-    const fileName = `resume-${timestamp}.${extension}`;
-
     // 使用 Base64 模式（无需额外依赖）
     const arrayBuffer = await file.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
@@ -52,8 +48,7 @@ export async function POST(request: NextRequest) {
       size: file.size,
       message: "简历上传成功！",
     });
-  } catch (error) {
-    console.error("上传失败:", error);
+  } catch {
     return NextResponse.json(
       { error: "上传失败，请重试" },
       { status: 500 }

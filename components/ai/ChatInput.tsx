@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 
 interface ChatInputProps {
@@ -14,7 +16,6 @@ export function ChatInput({ onSend, loading }: ChatInputProps) {
     setValue("");
   };
 
-  // 修复：支持 Shift+Enter 换行，Enter 发送
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

@@ -1,4 +1,6 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useCallback } from "react";
 
 export type Message = {
   role: "user" | "assistant";
@@ -9,7 +11,7 @@ export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const sendMessage = async (input: string) => {
+  const sendMessage = useCallback(async (input: string) => {
     if (!input.trim()) return;
 
     const newMessages = [...messages, { role: "user" as const, content: input }];
@@ -55,8 +57,7 @@ export function useChat() {
           }
         });
       }
-    } catch (error) {
-      console.error("Chat error:", error);
+    } catch {
       setMessages((prev) => [
         ...prev,
         { role: "assistant", content: "抱歉，出现了一些问题。请稍后再试。" },
@@ -64,7 +65,7 @@ export function useChat() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [messages]);
 
   return { messages, sendMessage, loading };
 }

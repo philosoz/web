@@ -7,7 +7,7 @@ const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/text/chatcompletion_pro";
 
 export async function streamMiniMaxReply(messages: ChatMessage[]) {
   const apiKey = process.env.MINIMAX_API_KEY;
-  const model = process.env.MINMAX_MODEL || "abab5.5-chat";
+  const model = process.env.MINIMAX_MODEL || "abab5.5-chat";
 
   if (!apiKey) {
     throw new Error("Server is missing MINIMAX_API_KEY.");
@@ -34,28 +34,37 @@ export async function streamMiniMaxReply(messages: ChatMessage[]) {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`MiniMax API error: ${response.status} - ${errorText}`);
+    let errorMessage = `API error: ${response.status}`;
+    try {
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("json")) {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } else {
+        const text = await response.text();
+        errorMessage = text.slice(0, 100); // 限制错误信息长度
+      }
+    } catch {
+      // 保持默认错误信息
+    }
+    throw new Error(errorMessage);
   }
 
   if (!response.body) {
-    throw new Error("MiniMax stream body is empty.");
+    throw new Error("Empty response body");
   }
 
   const decoder = new TextDecoder();
   const upstreamReader = response.body.getReader();
 
-  return new ReadableStream<Uint8Array>({
+  return new ReadableStream({
     async start(controller) {
       let buffer = "";
 
       try {
         while (true) {
           const { done, value } = await upstreamReader.read();
-
-          if (done) {
-            break;
-          }
+          if (done) break;
 
           buffer += decoder.decode(value, { stream: true });
 
@@ -65,12 +74,12 @@ export async function streamMiniMaxReply(messages: ChatMessage[]) {
             if (line.trim()) {
               try {
                 const json = JSON.parse(line);
-                if (json.choices && json.choices[0]?.delta?.content) {
+                if (json.choices?.[0]?.delta?.content) {
                   controller.enqueue(
                     new TextEncoder().encode(json.choices[0].delta.content)
                   );
                 }
-              } catch (e) {
+              } catch {
                 // 跳过无效行
               }
             }
