@@ -9,6 +9,15 @@ interface Message {
   content: string;
 }
 
+const colors = {
+  background: "#FAFAF8",
+  primaryText: "#2D2D2D",
+  secondaryText: "#8A8A8A",
+  border: "#E8E5E0",
+  accent: "#D6A77A",
+  userBubble: "#F5F5F3",
+};
+
 export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -16,6 +25,7 @@ export default function ChatPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -39,6 +49,11 @@ export default function ChatPage() {
 
   const handleInputFocus = () => {
     setShowSuggestions(true);
+    setIsInputFocused(true);
+  };
+
+  const handleInputBlur = () => {
+    setIsInputFocused(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -184,11 +199,11 @@ export default function ChatPage() {
       <div style={{ 
         height: "100vh", 
         width: "100vw", 
-        background: "#0b0b0c", 
+        background: colors.background, 
         display: "flex", 
         alignItems: "center", 
         justifyContent: "center",
-        color: "#555",
+        color: colors.secondaryText,
         fontSize: "14px"
       }}>
         加载中...
@@ -200,8 +215,8 @@ export default function ChatPage() {
     <div style={{ 
       height: "100vh", 
       width: "100vw", 
-      background: "#0b0b0c", 
-      color: "#e6e6e6", 
+      background: colors.background, 
+      color: colors.primaryText, 
       display: "flex", 
       flexDirection: "column",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif"
@@ -212,22 +227,22 @@ export default function ChatPage() {
         alignItems: "center", 
         justifyContent: "space-between",
         padding: "0 24px",
-        borderBottom: "1px solid #1a1a1c"
+        borderBottom: `1px solid ${colors.border}`
       }}>
         <button
           onClick={() => router.back()}
           style={{
             background: "none",
             border: "none",
-            color: "#555",
+            color: colors.secondaryText,
             fontSize: "14px",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             gap: "6px"
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = "#888")}
-          onMouseOut={(e) => (e.currentTarget.style.color = "#555")}
+          onMouseOver={(e) => (e.currentTarget.style.color = colors.primaryText)}
+          onMouseOut={(e) => (e.currentTarget.style.color = colors.secondaryText)}
         >
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 19l-7-7 7-7" />
@@ -237,8 +252,9 @@ export default function ChatPage() {
         
         <span style={{ 
           fontSize: "12px", 
-          color: "#555",
-          letterSpacing: "0.1em"
+          color: colors.accent,
+          letterSpacing: "0.15em",
+          fontWeight: "500"
         }}>
           在场
         </span>
@@ -250,11 +266,11 @@ export default function ChatPage() {
               style={{
                 background: "none",
                 border: "none",
-                color: "#555",
+                color: colors.secondaryText,
                 cursor: "pointer"
               }}
-              onMouseOver={(e) => (e.currentTarget.style.color = "#888")}
-              onMouseOut={(e) => (e.currentTarget.style.color = "#555")}
+              onMouseOver={(e) => (e.currentTarget.style.color = colors.primaryText)}
+              onMouseOut={(e) => (e.currentTarget.style.color = colors.secondaryText)}
             >
               清空
             </button>
@@ -264,11 +280,11 @@ export default function ChatPage() {
             style={{
               background: "none",
               border: "none",
-              color: "#555",
+              color: colors.secondaryText,
               cursor: "pointer"
             }}
-            onMouseOver={(e) => (e.currentTarget.style.color = "#888")}
-            onMouseOut={(e) => (e.currentTarget.style.color = "#555")}
+            onMouseOver={(e) => (e.currentTarget.style.color = colors.primaryText)}
+            onMouseOut={(e) => (e.currentTarget.style.color = colors.secondaryText)}
           >
             新对话
           </button>
@@ -283,18 +299,26 @@ export default function ChatPage() {
           padding: "32px 24px"
         }}
       >
-        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "680px", margin: "0 auto" }}>
           {messages.length === 0 ? (
-            <div style={{ paddingTop: "16px" }}>
-              <div style={{ 
-                fontSize: "15px",
-                marginBottom: "32px",
-                lineHeight: 1.6,
-                whiteSpace: "pre-wrap"
+            <div style={{ paddingTop: "48px" }}>
+              <h1 style={{ 
+                fontSize: "24px",
+                fontWeight: "400",
+                marginBottom: "12px",
+                color: colors.primaryText,
+                letterSpacing: "-0.02em"
               }}>
-                我在。
+                你好，我在。
+              </h1>
+              <p style={{ 
+                fontSize: "15px",
+                color: colors.secondaryText,
+                marginBottom: "40px",
+                lineHeight: 1.6
+              }}>
                 你可以直接说你在想什么。
-              </div>
+              </p>
               
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {staticSuggestions.map((suggestion, i) => (
@@ -302,20 +326,28 @@ export default function ChatPage() {
                     key={i}
                     onClick={() => handleSuggestionClick(suggestion)}
                     style={{
-                      background: "none",
-                      border: "none",
-                      color: "#666",
+                      background: "transparent",
+                      border: `1px solid ${colors.border}`,
+                      color: colors.secondaryText,
                       fontSize: "14px",
                       textAlign: "left",
-                      padding: "12px 16px",
+                      padding: "14px 18px",
                       cursor: "pointer",
-                      borderRadius: "8px",
-                      transition: "color 0.2s"
+                      borderRadius: "10px",
+                      transition: "all 0.2s ease"
                     }}
-                    onMouseOver={(e) => (e.currentTarget.style.color = "#aaa")}
-                    onMouseOut={(e) => (e.currentTarget.style.color = "#666")}
+                    onMouseOver={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = colors.accent;
+                      (e.currentTarget as HTMLButtonElement).style.color = colors.primaryText;
+                      (e.currentTarget as HTMLButtonElement).style.background = colors.userBubble;
+                    }}
+                    onMouseOut={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = colors.border;
+                      (e.currentTarget as HTMLButtonElement).style.color = colors.secondaryText;
+                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                    }}
                   >
-                    → {suggestion}
+                    {suggestion}
                   </button>
                 ))}
               </div>
@@ -327,13 +359,14 @@ export default function ChatPage() {
                   {msg.role === "user" ? (
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
                       <div style={{
-                        background: "#1a1a1c",
-                        color: "#ddd",
+                        background: colors.userBubble,
+                        color: colors.primaryText,
                         padding: "10px 16px",
                         borderRadius: "16px",
+                        border: `1px solid ${colors.border}`,
                         maxWidth: "75%",
                         fontSize: "14px",
-                        lineHeight: 1.5
+                        lineHeight: 1.6
                       }}>
                         {msg.content}
                       </div>
@@ -341,7 +374,8 @@ export default function ChatPage() {
                   ) : (
                     <div style={{
                       fontSize: "15px",
-                      lineHeight: 1.7,
+                      lineHeight: 1.8,
+                      color: colors.primaryText,
                       whiteSpace: "pre-wrap",
                       wordBreak: "break-word"
                     }}>
@@ -353,7 +387,7 @@ export default function ChatPage() {
               
               {isThinking && (
                 <div style={{ 
-                  color: "#888", 
+                  color: colors.secondaryText, 
                   fontSize: "14px", 
                   padding: "12px 0",
                   display: "flex",
@@ -368,21 +402,21 @@ export default function ChatPage() {
                       width: "6px", 
                       height: "6px", 
                       borderRadius: "50%", 
-                      background: "#D6A77A",
+                      background: colors.accent,
                       animation: "bounce 1.4s ease-in-out infinite both"
                     }} />
                     <span style={{ 
                       width: "6px", 
                       height: "6px", 
                       borderRadius: "50%", 
-                      background: "#D6A77A",
+                      background: colors.accent,
                       animation: "bounce 1.4s ease-in-out 0.16s infinite both"
                     }} />
                     <span style={{ 
                       width: "6px", 
                       height: "6px", 
                       borderRadius: "50%", 
-                      background: "#D6A77A",
+                      background: colors.accent,
                       animation: "bounce 1.4s ease-in-out 0.32s infinite both"
                     }} />
                   </div>
@@ -392,7 +426,7 @@ export default function ChatPage() {
                       40% { transform: scale(1); }
                     }
                   `}</style>
-                  <span style={{ color: "#666" }}>正在思考...</span>
+                  <span style={{ color: colors.accent }}>正在思考...</span>
                 </div>
               )}
             </div>
@@ -400,8 +434,12 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid #1a1a1c", padding: "16px 24px" }}>
-        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+      <div style={{ 
+        borderTop: `1px solid ${colors.border}`, 
+        padding: "16px 24px",
+        background: colors.background
+      }}>
+        <div style={{ maxWidth: "680px", margin: "0 auto" }}>
           {showSuggestions && inputValue === "" && messages.length === 0 && (
             <div style={{ marginBottom: "12px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -410,9 +448,9 @@ export default function ChatPage() {
                     key={i}
                     onClick={() => handleSuggestionClick(suggestion)}
                     style={{
-                      background: "none",
+                      background: "transparent",
                       border: "none",
-                      color: "#555",
+                      color: colors.secondaryText,
                       fontSize: "13px",
                       textAlign: "left",
                       padding: "8px 12px",
@@ -420,44 +458,86 @@ export default function ChatPage() {
                       borderRadius: "6px"
                     }}
                     onMouseOver={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = "#888";
-                      (e.currentTarget as HTMLButtonElement).style.background = "#1a1a1c";
+                      (e.currentTarget as HTMLButtonElement).style.color = colors.primaryText;
+                      (e.currentTarget as HTMLButtonElement).style.background = colors.userBubble;
                     }}
                     onMouseOut={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = "#555";
-                      (e.currentTarget as HTMLButtonElement).style.background = "none";
+                      (e.currentTarget as HTMLButtonElement).style.color = colors.secondaryText;
+                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
                     }}
                   >
-                    → {suggestion}
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showSuggestions && inputValue === "" && messages.length > 0 && (
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {staticSuggestions.slice(0, 3).map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: colors.secondaryText,
+                      fontSize: "13px",
+                      textAlign: "left",
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      borderRadius: "6px"
+                    }}
+                    onMouseOver={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color = colors.primaryText;
+                      (e.currentTarget as HTMLButtonElement).style.background = colors.userBubble;
+                    }}
+                    onMouseOut={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color = colors.secondaryText;
+                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                    }}
+                  >
+                    {suggestion}
                   </button>
                 ))}
               </div>
             </div>
           )}
           
-          <div style={{ display: "flex", alignItems: "flex-end", gap: "12px" }}>
+          <div style={{ 
+            display: "flex", 
+            alignItems: "flex-end", 
+            gap: "12px",
+            background: "#fff",
+            border: `1px solid ${isInputFocused ? colors.accent : colors.border}`,
+            borderRadius: "14px",
+            padding: "4px",
+            transition: "border-color 0.2s ease"
+          }}>
             <textarea
               ref={inputRef}
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
               placeholder="你在想什么？"
               rows={1}
               disabled={isThinking}
               style={{
                 flex: 1,
-                background: "#111113",
-                border: "1px solid #1a1a1c",
-                borderRadius: "12px",
+                background: "transparent",
+                border: "none",
                 padding: "12px 16px",
-                fontSize: "14px",
-                color: "#e6e6e6",
+                fontSize: "15px",
+                color: colors.primaryText,
                 outline: "none",
                 resize: "none",
                 minHeight: "48px",
                 maxHeight: "120px",
-                transition: "border-color 0.2s"
+                lineHeight: 1.5
               }}
             />
             
@@ -465,11 +545,11 @@ export default function ChatPage() {
               onClick={handleSend}
               disabled={!inputValue.trim() || isThinking}
               style={{
-                background: inputValue.trim() && !isThinking ? "#D6A77A" : "none",
+                background: inputValue.trim() && !isThinking ? colors.accent : "transparent",
                 border: "none",
-                borderRadius: "8px",
-                padding: inputValue.trim() && !isThinking ? "10px 16px" : "10px 16px",
-                color: inputValue.trim() && !isThinking ? "#fff" : "#444",
+                borderRadius: "10px",
+                padding: "10px 18px",
+                color: inputValue.trim() && !isThinking ? "#fff" : colors.secondaryText,
                 fontSize: "14px",
                 cursor: inputValue.trim() && !isThinking ? "pointer" : "not-allowed",
                 transition: "all 0.2s ease",
@@ -485,7 +565,7 @@ export default function ChatPage() {
                 (e.currentTarget as HTMLButtonElement).style.opacity = "1";
                 (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
                 (e.currentTarget as HTMLButtonElement).style.color = 
-                  inputValue.trim() && !isThinking ? "#fff" : "#444";
+                  inputValue.trim() && !isThinking ? "#fff" : colors.secondaryText;
               }}
             >
               发送
