@@ -47,9 +47,10 @@ export async function getPawCount(): Promise<number> {
   const client = getRedis();
   if (client) {
     try {
-      const count = await client.get<number>(KV_KEY);
-      if (typeof count === "number") {
-        return count;
+      const count = await client.get<string | number>(KV_KEY);
+      const numericCount = typeof count === "number" ? count : parseInt(String(count), 10);
+      if (!isNaN(numericCount)) {
+        return numericCount;
       }
     } catch (err) {
       console.error("[PawStats] Upstash get failed:", err);
@@ -63,9 +64,9 @@ export async function incrementPawCount(): Promise<number> {
   const client = getRedis();
   if (client) {
     try {
-      const count = await client.get<number>(KV_KEY);
-      const currentCount = typeof count === "number" ? count : await getLocalCount();
-      const newCount = currentCount + 1;
+      const count = await client.get<string | number>(KV_KEY);
+      const currentCount = typeof count === "number" ? count : parseInt(String(count), 10);
+      const newCount = isNaN(currentCount) ? await getLocalCount() : currentCount + 1;
 
       await client.set(KV_KEY, newCount);
       return newCount;
