@@ -47,7 +47,6 @@ export function useChat() {
         const chunk = decoder.decode(value);
         assistantMessage += chunk;
 
-        // 修复：只更新最后一条助手消息
         setMessages((prev) => {
           const lastMessage = prev[prev.length - 1];
           if (lastMessage?.role === "assistant") {

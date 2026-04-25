@@ -3,7 +3,6 @@ export type ChatMessage = {
   content: string;
 };
 
-// MiniMax OpenAI 兼容 API
 const MINIMAX_API_URL = "https://api.minimaxi.com/v1/text/chatcompletion_v2";
 
 export async function streamMiniMaxReply(messages: ChatMessage[]) {
@@ -72,7 +71,6 @@ export async function streamMiniMaxReply(messages: ChatMessage[]) {
               try {
                 const json = JSON.parse(dataStr);
 
-                // OpenAI 兼容格式
                 if (json.choices?.[0]?.delta?.content) {
                   controller.enqueue(
                     new TextEncoder().encode(json.choices[0].delta.content)
@@ -86,8 +84,8 @@ export async function streamMiniMaxReply(messages: ChatMessage[]) {
         }
 
         controller.close();
-      } catch (error) {
-        controller.error(error);
+      } catch {
+        controller.error(new Error("Stream processing error"));
       } finally {
         reader.releaseLock();
       }
