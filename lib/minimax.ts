@@ -74,33 +74,18 @@ export async function streamMiniMaxReply(messages: ChatMessage[]) {
             buffer = lines.pop() || "";
 
             for (const line of lines) {
-              if (line.startsWith("event:")) {
-                continue;
-              }
-
-              if (line.startsWith("data:")) {
-                const data = line.slice(5).trim();
-                if (!data || data === "[DONE]") continue;
+              if (line.startsWith("data: ")) {
+                const dataStr = line.slice(6).trim();
+                if (!dataStr || dataStr === "[DONE]") continue;
 
                 try {
-                  const json = JSON.parse(data);
+                  const event = JSON.parse(dataStr);
 
-                  if (json.type === "content_block_delta") {
-                    if (json.delta?.type === "text_delta") {
+                  if (event.type === "content_block_delta") {
+                    if (event.delta?.type === "text_delta" && event.delta.text) {
                       controller.enqueue(
-                        new TextEncoder().encode(json.delta.text)
+                        new TextEncoder().encode(event.delta.text)
                       );
-                    }
-                  }
-
-                  if (json.type === "message_delta") {
-                    if (json.delta?.content) {
-                      const content = json.delta.content;
-                      if (content[0]?.type === "text_delta") {
-                        controller.enqueue(
-                          new TextEncoder().encode(content[0].text)
-                        );
-                      }
                     }
                   }
                 } catch {
