@@ -239,8 +239,8 @@ export async function semanticSearch(query: string, topK: number = 5): Promise<D
 }
 
 // 构建语义上下文（新增功能）
-export async function buildSemanticContext(query: string): Promise<string> {
-  const results = await semanticSearch(query, 5);
+export async function buildSemanticContext(query: string, topK: number = 5): Promise<string> {
+  const results = await semanticSearch(query, topK);
   
   if (results.length === 0) {
     return "";
@@ -257,10 +257,10 @@ export async function buildSemanticContext(query: string): Promise<string> {
 }
 
 // 安全的上下文构建（混合模式）
-export async function buildContextSafely(query: string): Promise<string> {
+export async function buildContextSafely(query: string, topK: number = 3): Promise<string> {
   try {
     // 优先尝试语义搜索
-    const semanticContext = await buildSemanticContext(query);
+    const semanticContext = await buildSemanticContext(query, topK);
     if (semanticContext) {
       return semanticContext;
     }
@@ -274,6 +274,5 @@ export async function buildContextSafely(query: string): Promise<string> {
 
 // 混合搜索（推荐使用）
 export async function hybridSearch(query: string, topK: number = 3): Promise<string> {
-  // topK 参数传递给 buildContextSafely 用于控制检索数量
-  return await buildContextSafely(query);
+  return await buildContextSafely(query, topK);
 }

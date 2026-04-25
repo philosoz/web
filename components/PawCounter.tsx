@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface PawCounterProps {
@@ -11,10 +11,17 @@ interface PawCounterProps {
 
 export default function PawCounter({ initialCount = 128, showAddOne = false, onCountUpdate }: PawCounterProps) {
   const [showPlus, setShowPlus] = useState(false);
+  const [count, setCount] = useState(initialCount);
+
+  useEffect(() => {
+    setCount(initialCount);
+  }, [initialCount]);
 
   const handleAdd = () => {
     setShowPlus(true);
-    onCountUpdate?.(initialCount + 1);
+    const newCount = count + 1;
+    setCount(newCount);
+    onCountUpdate?.(newCount);
 
     setTimeout(() => setShowPlus(false), 800);
   };
@@ -22,7 +29,7 @@ export default function PawCounter({ initialCount = 128, showAddOne = false, onC
   return (
     <div className="relative text-sm text-gray-600 bg-white px-4 py-2 rounded-lg shadow-md">
       <div className="flex items-center gap-2">
-        <span>今天有 {initialCount} 只小狗来过</span>
+        <span>今天有 {count} 只小狗来过</span>
         <span className="text-lg">🐾</span>
       </div>
 
