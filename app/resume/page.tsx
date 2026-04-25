@@ -200,8 +200,8 @@ export default function ResumePage() {
         </div>
 
         {/* Content */}
-        <main className="px-8 py-6 max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-8">
+        <main className="px-4 md:px-8 py-4 md:py-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Left Column */}
             <div className="md:col-span-2">
               <h1 className="text-3xl mb-2">张海挺</h1>
@@ -299,8 +299,7 @@ export default function ResumePage() {
 
             {/* Right Column */}
             <div>
-              <div 
-                className={`bg-white border border-gray-200 p-6 rounded-lg sticky top-6 transition-all duration-300 ${
+              <div className={`bg-white border border-gray-200 p-4 sm:p-6 rounded-lg sticky top-4 sm:top-6 transition-all duration-300 ${
                   visibleSections.has("skills") ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
                 }`}
               >
@@ -403,7 +402,7 @@ export default function ResumePage() {
         </main>
 
         {/* Footer */}
-        <footer className="px-8 py-10 border-t border-gray-200 max-w-4xl mx-auto">
+        <footer className="px-4 md:px-8 py-8 md:py-10 border-t border-gray-200 max-w-4xl mx-auto">
           <div className="flex justify-between items-center text-sm text-gray-500">
             <div>张海挺 · 记录思考，也记录生活</div>
             <Link href="/chat" className="hover:text-gray-700 transition-colors">

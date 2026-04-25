@@ -29,7 +29,16 @@ export async function POST(request: NextRequest) {
     };
 
     const rawMessages = body.messages ?? [];
-    const userMessage = rawMessages[rawMessages.length - 1]?.content || "";
+    const userMessage = rawMessages[rawMessages.length - 1]?.content?.trim() || "";
+    
+    // 验证消息是否为空
+    if (!userMessage) {
+      return NextResponse.json(
+        { error: "消息不能为空" },
+        { status: 400 }
+      );
+    }
+    
     const intensity = body.intensity ?? 0.5;
     const enableWebSearch = body.enableSearch ?? shouldEnableWebSearch(userMessage);
 

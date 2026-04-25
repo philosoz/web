@@ -72,7 +72,7 @@ export default function ResumeUploadPage() {
 
     try {
       setActionLoading(filename);
-      const response = await fetch(`/api/resume/${filename}`, {
+      const response = await fetch(`/api/resume/${filename}?filename=${encodeURIComponent(filename)}`, {
         method: "DELETE",
       });
 
@@ -209,14 +209,11 @@ export default function ResumeUploadPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => {
-                            const filename = resume.url.split("/").pop() || "";
-                            deleteResume(filename);
-                          }}
-                          disabled={actionLoading === (resume.url.split("/").pop() || "")}
+                          onClick={() => deleteResume(resume.url.split("/").pop() || resume.fileName)}
+                          disabled={actionLoading === (resume.url.split("/").pop() || resume.fileName)}
                           className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {actionLoading === (resume.url.split("/").pop() || "") ? "删除中..." : "删除"}
+                          {actionLoading === (resume.url.split("/").pop() || resume.fileName) ? "删除中..." : "删除"}
                         </button>
                       </div>
                     </div>

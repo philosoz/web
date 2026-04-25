@@ -1,18 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   loading?: boolean;
 }
 
-export function ChatInput({ onSend, loading }: ChatInputProps) {
+// 样式常量
+const styles = {
+  container: "border-t border-gray-100 p-6 bg-white",
+  innerContainer: "max-w-[720px] mx-auto flex gap-3",
+  textarea: "flex-1 border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none transition-all duration-200 resize-none disabled:opacity-50 placeholder:text-gray-400 focus:border-gray-300 hover:border-gray-300",
+  button: "bg-[#8C9A8F] text-white px-5 py-3 rounded-lg hover:opacity-90 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm",
+  fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif",
+} as const;
+
+function ChatInputComponent({ onSend, loading }: ChatInputProps) {
   const [value, setValue] = useState("");
 
   const handleSend = () => {
-    if (!value.trim() || loading) return;
-    onSend(value);
+    const trimmed = value.trim();
+    if (!trimmed || loading) return;
+    onSend(trimmed);
     setValue("");
   };
 
@@ -24,8 +34,8 @@ export function ChatInput({ onSend, loading }: ChatInputProps) {
   };
 
   return (
-    <div className="border-t border-gray-100 p-6 bg-white">
-      <div className="max-w-[720px] mx-auto flex gap-3">
+    <div className={styles.container}>
+      <div className={styles.innerContainer}>
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -33,20 +43,20 @@ export function ChatInput({ onSend, loading }: ChatInputProps) {
           placeholder="你在想什么？"
           disabled={loading}
           rows={1}
-          className="flex-1 border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none transition-all duration-200 resize-none disabled:opacity-50 placeholder:text-gray-400 focus:border-gray-300 hover:border-gray-300"
+          className={styles.textarea}
           style={{
             minHeight: "48px",
             maxHeight: "160px",
-            fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif",
+            fontFamily: styles.fontFamily,
             boxShadow: "inset 0 1px 3px rgba(0, 0, 0, 0.04)",
           }}
         />
         <button
           onClick={handleSend}
           disabled={loading || !value.trim()}
-          className="bg-[#8C9A8F] text-white px-5 py-3 rounded-lg hover:opacity-90 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm"
+          className={styles.button}
           style={{
-            fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif",
+            fontFamily: styles.fontFamily,
             minWidth: "60px",
           }}
         >
@@ -56,3 +66,6 @@ export function ChatInput({ onSend, loading }: ChatInputProps) {
     </div>
   );
 }
+
+// 使用 memo 优化
+export const ChatInput = memo(ChatInputComponent);

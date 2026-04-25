@@ -11,13 +11,20 @@ export default function HomePage() {
 
   useEffect(() => {
     fetch("/api/paw")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.count !== undefined) {
           setPawCount(data.count);
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Failed to fetch paw count:', error);
+      });
   }, []);
 
   const handleCountUpdate = (count: number) => {
@@ -46,10 +53,10 @@ export default function HomePage() {
         </nav>
       </header>
 
-      <section className="px-8 py-20 max-w-7xl mx-auto grid md:grid-cols-2 gap-10 items-center">
+      <section className="px-4 md:px-8 py-12 md:py-20 max-w-7xl mx-auto grid md:grid-cols-2 gap-8 md:gap-10 items-center">
         <FadeInSection>
           <div>
-            <h1 className="text-4xl md:text-5xl leading-relaxed mb-6">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl leading-relaxed mb-4 md:mb-6">
               我在记录一些<br />还没完全想清楚的事情。
             </h1>
             <p className="text-gray-500 mb-6">
@@ -107,7 +114,7 @@ export default function HomePage() {
         </section>
       </FadeInSection>
 
-      <section className="px-8 pb-20 max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
+      <section className="px-4 md:px-8 pb-12 md:pb-20 max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
         <FadeInSection delay={0}>
           <Link
             href="/notes"
@@ -208,7 +215,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="px-8 py-10 border-t border-gray-200 max-w-7xl mx-auto">
+      <footer className="px-4 md:px-8 py-8 md:py-10 border-t border-gray-200 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
           <div>张海挺 · 记录思考，也记录生活</div>
           <div className="flex gap-4">

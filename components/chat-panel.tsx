@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, memo, useEffect, useRef, useState } from "react";
 
 type Message = {
   role: "user" | "assistant";
@@ -15,7 +15,7 @@ const starterMessages: Message[] = [
   }
 ];
 
-export function ChatPanel() {
+function ChatPanelComponent() {
   const [messages, setMessages] = useState<Message[]>(starterMessages);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -123,7 +123,7 @@ export function ChatPanel() {
         {messages.map((message, index) => (
           <article
             className={`message message--${message.role}`}
-            key={`${message.role}-${index}-${message.content.slice(0, 24)}`}
+            key={`${message.role}-${index}`}
           >
             <span className="message__role">
               {message.role === "assistant" ? "MiniMax" : "You"}
@@ -155,3 +155,5 @@ export function ChatPanel() {
     </section>
   );
 }
+
+export const ChatPanel = memo(ChatPanelComponent);

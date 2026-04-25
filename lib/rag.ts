@@ -3,6 +3,7 @@
 import { VectorStore, type Document } from './vector-store';
 import { formatIdentityProfile } from '../data/identity-profile';
 
+// 帖子类型定义
 export interface Post {
   id: string;
   title: string;
@@ -13,86 +14,8 @@ export interface Post {
   excerpt?: string;
 }
 
-// 初始化向量存储实例
-let vectorStore: VectorStore | null = null;
-let isInitialized = false;
-
-// 初始化 RAG 系统
-export async function initializeRAG(): Promise<void> {
-  if (isInitialized) return;
-  
-  vectorStore = new VectorStore();
-  
-  // 添加个人身份画像
-  await vectorStore.addDocument({
-    title: "个人身份画像",
-    content: formatIdentityProfile(),
-    category: "identity",
-    tags: ["个人", "背景", "身份", "自我介绍"],
-  });
-  
-  // 添加所有文章
-  for (const post of posts) {
-    await vectorStore.addDocument({
-      title: post.title,
-      content: post.content,
-      category: post.category,
-      tags: post.tags,
-      metadata: {
-        date: post.date,
-        excerpt: post.excerpt,
-      },
-    });
-  }
-  
-  isInitialized = true;
-  console.log(`RAG initialized with ${vectorStore.getDocumentCount()} documents`);
-}
-
-// 获取向量存储实例
-function getVectorStore(): VectorStore {
-  if (!vectorStore) {
-    vectorStore = new VectorStore();
-    // 同步初始化（简化版）
-    initializeRAGSync();
-  }
-  return vectorStore;
-}
-
-// 同步初始化（备用）
-function initializeRAGSync(): void {
-  if (isInitialized) return;
-  
-  const store = new VectorStore();
-  
-  // 添加个人身份画像
-  store.addDocument({
-    title: "个人身份画像",
-    content: formatIdentityProfile(),
-    category: "identity",
-    tags: ["个人", "背景", "身份", "自我介绍"],
-  });
-  
-  // 添加所有文章
-  for (const post of posts) {
-    store.addDocument({
-      title: post.title,
-      content: post.content,
-      category: post.category,
-      tags: post.tags,
-      metadata: {
-        date: post.date,
-        excerpt: post.excerpt,
-      },
-    });
-  }
-  
-  vectorStore = store;
-  isInitialized = true;
-}
-
-// 原有文章数据
-export const posts: Post[] = [
+// 文章数据
+const posts: Post[] = [
   {
     id: "1",
     title: "为什么我开始喜欢独处",
@@ -185,8 +108,57 @@ export const posts: Post[] = [
   },
 ];
 
-// 关键词检索（原有功能）
-export function findRelevantPosts(query: string): Post[] {
+// 导出 posts 以供其他模块使用
+export { posts };
+
+// 向量存储实例（单例模式）
+let vectorStore: VectorStore | null = null;
+let isInitialized = false;
+
+// 初始化向量存储
+function initVectorStore(): VectorStore {
+  if (vectorStore) return vectorStore;
+  
+  vectorStore = new VectorStore();
+  
+  // 添加个人身份画像
+  vectorStore.addDocument({
+    title: "个人身份画像",
+    content: formatIdentityProfile(),
+    category: "identity",
+    tags: ["个人", "背景", "身份", "自我介绍"],
+  });
+  
+  // 添加所有文章
+  for (const post of posts) {
+    vectorStore.addDocument({
+      title: post.title,
+      content: post.content,
+      category: post.category,
+      tags: post.tags,
+      metadata: {
+        date: post.date,
+        excerpt: post.excerpt,
+      },
+    });
+  }
+  
+  isInitialized = true;
+  console.log(`RAG initialized with ${vectorStore.getDocumentCount()} documents`);
+  
+  return vectorStore;
+}
+
+// 获取向量存储实例
+function getVectorStore(): VectorStore {
+  if (!isInitialized) {
+    return initVectorStore();
+  }
+  return vectorStore!;
+}
+
+// 关键词检索
+function findRelevantPosts(query: string): Post[] {
   const queryWords = query.toLowerCase().split(/\s+/);
   
   const scored = posts.map(post => {
@@ -197,7 +169,6 @@ export function findRelevantPosts(query: string): Post[] {
     ).toLowerCase();
     
     let score = 0;
-    
     for (const word of queryWords) {
       if (searchable.includes(word)) {
         score += 1;
@@ -214,8 +185,8 @@ export function findRelevantPosts(query: string): Post[] {
     .map(s => s.post);
 }
 
-// 构建 RAG 上下文（原有功能）
-export function buildRAGContext(query: string): string {
+// 构建关键词检索上下文
+function buildKeywordContext(query: string): string {
   const relevantPosts = findRelevantPosts(query);
   
   if (relevantPosts.length === 0) {
@@ -227,8 +198,8 @@ export function buildRAGContext(query: string): string {
     .join("\n\n");
 }
 
-// 语义搜索（新增功能）
-export async function semanticSearch(query: string, topK: number = 5): Promise<Document[]> {
+// 语义搜索
+async function semanticSearch(query: string, topK: number = 5): Promise<Document[]> {
   try {
     const store = getVectorStore();
     return await store.hybridSearch(query, topK);
@@ -238,26 +209,24 @@ export async function semanticSearch(query: string, topK: number = 5): Promise<D
   }
 }
 
-// 构建语义上下文（新增功能）
-export async function buildSemanticContext(query: string, topK: number = 5): Promise<string> {
+// 构建语义上下文
+async function buildSemanticContext(query: string, topK: number = 5): Promise<string> {
   const results = await semanticSearch(query, topK);
   
   if (results.length === 0) {
     return "";
   }
   
-  const formattedResults = results.map(item => {
+  return results.map(item => {
     if (item.category === 'identity') {
       return `[个人背景]\n${item.content}`;
     }
     return `[${item.title}]\n${item.content}`;
-  });
-  
-  return formattedResults.join("\n\n");
+  }).join("\n\n");
 }
 
 // 安全的上下文构建（混合模式）
-export async function buildContextSafely(query: string, topK: number = 3): Promise<string> {
+export async function hybridSearch(query: string, topK: number = 3): Promise<string> {
   try {
     // 优先尝试语义搜索
     const semanticContext = await buildSemanticContext(query, topK);
@@ -269,10 +238,5 @@ export async function buildContextSafely(query: string, topK: number = 3): Promi
   }
   
   // 回退到关键词搜索
-  return buildRAGContext(query);
-}
-
-// 混合搜索（推荐使用）
-export async function hybridSearch(query: string, topK: number = 3): Promise<string> {
-  return await buildContextSafely(query, topK);
+  return buildKeywordContext(query);
 }

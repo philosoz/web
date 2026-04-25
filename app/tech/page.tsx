@@ -86,11 +86,11 @@ export default function TechPage() {
   if (loading) {
     return (
       <div className="min-h-screen">
-        <header className="flex justify-between items-center px-8 py-6 max-w-4xl mx-auto">
-          <Link href="/" className="font-medium text-lg">
+        <header className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6 max-w-4xl mx-auto">
+          <Link href="/" className="font-medium text-base md:text-lg">
             张海挺<span className="ml-1">•</span>
           </Link>
-          <nav className="space-x-8 text-sm text-gray-600">
+          <nav className="space-x-4 md:space-x-8 text-xs md:text-sm text-gray-600">
             <Link href="/notes" className="hover:text-gray-900 transition-colors">
               笔记
             </Link>
@@ -145,7 +145,7 @@ export default function TechPage() {
                 onClick={() => setSelectedTag(null)}
                 className={`px-4 py-2 rounded-full text-sm transition-colors ${
                   selectedTag === null
-                    ? 'bg-[#7A90A4] text-white'
+                    ? 'bg-[#D6A77A] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -157,7 +157,7 @@ export default function TechPage() {
                   onClick={() => setSelectedTag(tag)}
                   className={`px-4 py-2 rounded-full text-sm transition-colors ${
                     selectedTag === tag
-                      ? 'bg-[#7A90A4] text-white'
+                      ? 'bg-[#D6A77A] text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -197,8 +197,17 @@ export default function TechPage() {
           </div>
 
           {filteredPosts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">暂无相关技术文章</p>
+            <div className="text-center py-16">
+              <div className="inline-block p-4 mb-4 rounded-full bg-gray-100">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+              </div>
+              <p className="text-gray-500 mb-2">暂无相关技术文章</p>
+              <p className="text-sm text-gray-400">试试其他标签，或者</p>
+              <Link href="/chat" className="text-[#D6A77A] hover:underline text-sm">
+                问我技术问题 →
+              </Link>
             </div>
           )}
 
@@ -208,14 +217,14 @@ export default function TechPage() {
             </p>
             <Link
               href="/chat?topic=技术"
-              className="inline-block px-6 py-3 bg-[#7A90A4] text-white rounded-lg hover:opacity-90 transition-opacity"
+              className="inline-block px-6 py-3 bg-[#D6A77A] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               问我技术问题 →
             </Link>
           </div>
         </main>
 
-        <footer className="px-8 py-10 border-t border-gray-200 max-w-4xl mx-auto">
+        <footer className="px-4 md:px-8 py-8 md:py-10 border-t border-gray-200 max-w-4xl mx-auto">
           <div className="flex justify-between items-center text-sm text-gray-500">
             <div>张海挺 · 记录思考，也记录生活</div>
             <Link href="/chat" className="hover:text-gray-700 transition-colors">

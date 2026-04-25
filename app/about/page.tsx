@@ -31,11 +31,11 @@ export default function AboutPage() {
   if (loading) {
     return (
       <div className="min-h-screen">
-        <header className="flex justify-between items-center px-8 py-6 max-w-3xl mx-auto">
-          <Link href="/" className="font-medium text-lg">
+        <header className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6 max-w-3xl mx-auto">
+          <Link href="/" className="font-medium text-base md:text-lg">
             张海挺<span className="ml-1">•</span>
           </Link>
-          <nav className="space-x-8 text-sm text-gray-600">
+          <nav className="space-x-4 md:space-x-8 text-xs md:text-sm text-gray-600">
             <Link href="/notes" className="hover:text-gray-900 transition-colors">
               笔记
             </Link>

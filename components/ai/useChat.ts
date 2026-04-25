@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   ChatSession,
   loadAllSessions,
@@ -18,13 +18,15 @@ import {
   UserProfile,
 } from "@/lib/chat-storage";
 
-export type Message = {
+// 消息类型定义
+export interface Message {
   role: "user" | "assistant";
   content: string;
   tags?: string[];
-};
+}
 
-export function autoTagMessage(message: string): string[] {
+// 自动消息标签
+function autoTagMessage(message: string): string[] {
   const tags: string[] = [];
   
   if (message.includes('感觉') || message.includes('心情') || 
@@ -68,10 +70,12 @@ export function autoTagMessage(message: string): string[] {
   return tags;
 }
 
+// 延迟函数
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// 文本分块
 function splitIntoChunks(text: string): string[] {
   const chunks = text
     .split(/(?<=[。！？])/)
@@ -96,6 +100,7 @@ function splitIntoChunks(text: string): string[] {
   return chunks;
 }
 
+// 注入人性化表达
 function injectHumanNoise(text: string): string {
   if (Math.random() < 0.15 && text.length > 30) {
     const noises = [
@@ -108,6 +113,7 @@ function injectHumanNoise(text: string): string {
   return text;
 }
 
+// 流式输出文本
 async function streamText(
   fullText: string,
   onUpdate: (content: string) => void
@@ -168,8 +174,6 @@ export function useChat() {
   const saveCurrentSession = useCallback((msgs: Message[]) => {
     if (currentSessionId) {
       updateSession(currentSessionId, { messages: msgs });
-      const updatedSessions = loadAllSessions();
-      setSessions(updatedSessions);
     }
   }, [currentSessionId]);
 
@@ -180,11 +184,16 @@ export function useChat() {
         const existingTags = new Set(currentSession.tags);
         messageTags.forEach(tag => existingTags.add(tag));
         updateSession(currentSessionId, { tags: Array.from(existingTags) });
-        const updatedSessions = loadAllSessions();
-        setSessions(updatedSessions);
       }
     }
   }, [currentSessionId, sessions]);
+
+  // 刷新 sessions 列表
+  const refreshSessions = useCallback(() => {
+    const updatedSessions = loadAllSessions();
+    setSessions(updatedSessions);
+    return updatedSessions;
+  }, []);
 
   const sendMessage = useCallback(async (input: string) => {
     if (!input.trim() || isThinking) return;
@@ -209,7 +218,7 @@ export function useChat() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ messages: newMessages }),
-        signal: abortControllerRef.current.signal,
+        signal: abortControllerRef.current?.signal,
       });
 
       if (!res.ok) {
@@ -252,7 +261,6 @@ export function useChat() {
       }
 
       setIsThinking(false);
-      setLoading(true);
 
       const processedResponse = injectHumanNoise(fullResponse);
       const chunks = splitIntoChunks(processedResponse);
@@ -284,7 +292,8 @@ export function useChat() {
       updateSessionTags(assistantTags);
       saveCurrentSession(finalMessages);
       
-      const allSessions = loadAllSessions();
+      // 更新用户画像
+      const allSessions = refreshSessions();
       const interests = analyzeUserInterests(allSessions);
       updateUserProfile({ interests });
       setProfile(getUserProfile());
@@ -305,7 +314,7 @@ export function useChat() {
       setLoading(false);
       setIsThinking(false);
     }
-  }, [messages, saveCurrentSession, updateSessionTags, isThinking]);
+  }, [messages, saveCurrentSession, updateSessionTags, isThinking, refreshSessions]);
 
   const switchSession = useCallback((sessionId: string) => {
     if (abortControllerRef.current) {
@@ -328,9 +337,8 @@ export function useChat() {
     const newSession = createSession();
     setMessages(newSession.messages);
     setCurrentSessionId(newSession.id);
-    const updatedSessions = loadAllSessions();
-    setSessions(updatedSessions);
-  }, [messages, saveCurrentSession]);
+    refreshSessions();
+  }, [messages, saveCurrentSession, refreshSessions]);
 
   const deleteCurrentSession = useCallback(() => {
     if (!currentSessionId) return;
@@ -340,30 +348,26 @@ export function useChat() {
     }
     
     deleteSession(currentSessionId);
-    const updatedSessions = loadAllSessions();
-    setSessions(updatedSessions);
     
-    if (updatedSessions.length > 0) {
-      const nextSession = updatedSessions[0];
-      setMessages(nextSession.messages);
-      setCurrentSessionId(nextSession.id);
-      setCurrentSession(nextSession.id);
+    if (sessions.length > 1) {
+      const nextSession = sessions.find(s => s.id !== currentSessionId);
+      if (nextSession) {
+        setMessages(nextSession.messages);
+        setCurrentSessionId(nextSession.id);
+        setCurrentSession(nextSession.id);
+      }
     } else {
       const newSession = createSession();
       setMessages(newSession.messages);
       setCurrentSessionId(newSession.id);
-      setSessions(loadAllSessions());
     }
-  }, [currentSessionId]);
+    refreshSessions();
+  }, [currentSessionId, sessions]);
 
   const toggleFavorite = useCallback((sessionId: string) => {
-    const session = sessions.find(s => s.id === sessionId);
-    if (session) {
-      updateSession(sessionId, { isFavorite: !session.isFavorite });
-      const updatedSessions = loadAllSessions();
-      setSessions(updatedSessions);
-    }
-  }, [sessions]);
+    updateSession(sessionId, { isFavorite: !sessions.find(s => s.id === sessionId)?.isFavorite });
+    refreshSessions();
+  }, [sessions, refreshSessions]);
 
   const clearCurrentSession = useCallback(() => {
     if (!currentSessionId) return;
@@ -374,8 +378,7 @@ export function useChat() {
     
     setMessages([]);
     updateSession(currentSessionId, { messages: [] });
-    const updatedSessions = loadAllSessions();
-    setSessions(updatedSessions);
+    refreshSessions();
   }, [currentSessionId]);
 
   return {

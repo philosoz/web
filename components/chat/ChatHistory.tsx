@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { ChatSession } from "@/lib/chat-storage";
 
 interface ChatHistoryProps {
@@ -46,7 +47,7 @@ function getSessionPreview(session: ChatSession): string {
   return '新会话';
 }
 
-export function ChatHistory({
+function ChatHistoryComponent({
   sessions,
   currentSessionId,
   onSwitchSession,
@@ -54,12 +55,14 @@ export function ChatHistory({
   onToggleFavorite,
   onNewSession,
 }: ChatHistoryProps) {
-  const sortedSessions = [...sessions].sort((a, b) => {
-    if (a.isFavorite !== b.isFavorite) {
-      return a.isFavorite ? -1 : 1;
-    }
-    return b.updatedAt - a.updatedAt;
-  });
+  const sortedSessions = useMemo(() => {
+    return [...sessions].sort((a, b) => {
+      if (a.isFavorite !== b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+      return b.updatedAt - a.updatedAt;
+    });
+  }, [sessions]);
 
   return (
     <div className="h-full bg-white border-r border-gray-200 flex flex-col">

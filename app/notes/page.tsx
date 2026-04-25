@@ -82,11 +82,11 @@ export default function NotesPage() {
   if (loading) {
     return (
       <div className="min-h-screen">
-        <header className="flex justify-between items-center px-8 py-6 max-w-4xl mx-auto">
-          <Link href="/" className="font-medium text-lg">
+        <header className="flex justify-between items-center px-4 md:px-8 py-4 md:py-6 max-w-4xl mx-auto">
+          <Link href="/" className="font-medium text-base md:text-lg">
             张海挺<span className="ml-1">•</span>
           </Link>
-          <nav className="space-x-8 text-sm text-gray-600">
+          <nav className="space-x-4 md:space-x-8 text-xs md:text-sm text-gray-600">
             <Link href="/notes" className="hover:text-gray-900 transition-colors">
               笔记
             </Link>
@@ -195,8 +195,17 @@ export default function NotesPage() {
           </div>
 
           {filteredPosts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">暂无相关笔记</p>
+            <div className="text-center py-16">
+              <div className="inline-block p-4 mb-4 rounded-full bg-gray-100">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                </svg>
+              </div>
+              <p className="text-gray-500 mb-2">暂无相关笔记</p>
+              <p className="text-sm text-gray-400">试试其他标签，或者</p>
+              <Link href="/chat" className="text-[#D6A77A] hover:underline text-sm">
+                和我聊聊 →
+              </Link>
             </div>
           )}
 

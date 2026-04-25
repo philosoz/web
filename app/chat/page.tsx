@@ -1,51 +1,149 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useChat } from "@/components/ai/useChat";
-import { MessageBlock } from "@/components/ai/MessageBlock";
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
 
 export default function ChatPage() {
   const router = useRouter();
-  const {
-    messages,
-    sendMessage,
-    loading,
-    isThinking,
-    createNewSession,
-    clearCurrentSession,
-    welcomeMessage,
-  } = useChat();
-  const initialized = useRef(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-    
-    const params = new URLSearchParams(window.location.search);
-    const message = params.get("message");
-    if (message) {
-      sendMessage(message);
-      window.history.replaceState({}, "", "/chat");
+    setIsReady(true);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
     }
-  }, [sendMessage]);
+  }, []);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, isThinking]);
+    scrollToBottom();
+  }, [scrollToBottom, messages, isThinking]);
 
-  const handleSend = () => {
-    const trimmed = inputValue.trim();
-    if (!trimmed || isThinking) return;
-    sendMessage(trimmed);
+  const handleInputFocus = () => {
+    setShowSuggestions(true);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+    if (value.trim()) {
+      setShowSuggestions(false);
+    }
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+  };
+
+  const handleSend = async () => {
+    const text = inputValue.trim();
+    if (!text || isThinking) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    const userMessage: Message = { 
+      id: Date.now().toString(), 
+      role: "user", 
+      content: text 
+    };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInputValue("");
+    setShowSuggestions(false);
+    setIsThinking(true);
+
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages }),
+        signal: abortControllerRef.current?.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        let errorMessage = "服务暂时不可用";
+        if (res.status === 503) {
+          errorMessage = "AI 服务暂时不可用，请稍后重试";
+        } else if (res.status === 429) {
+          errorMessage = "请求过于频繁，请稍后再试";
+        } else if (res.status === 401) {
+          errorMessage = "服务认证失败，请联系管理员";
+        }
+        throw new Error(errorMessage);
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No reader");
+
+      const decoder = new TextDecoder();
+      let assistantMessage = "";
+
+      setMessages([...newMessages, { id: (Date.now() + 1).toString(), role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        assistantMessage += decoder.decode(value, { stream: true });
+        
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === "assistant") {
+            return [...prev.slice(0, -1), { ...last, content: assistantMessage }];
+          }
+          return prev;
+        });
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      
+      let errorMessage = "嗯…出了点问题。";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("timeout") || error.message.includes("Timeout")) {
+          errorMessage = "请求超时，请稍后重试。";
+        } else if (error.message.includes("network") || error.message.includes("Network")) {
+          errorMessage = "网络连接失败，请检查网络后重试。";
+        } else if (error.message.includes("服务暂时不可用")) {
+          errorMessage = error.message;
+        }
+      }
+      
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: errorMessage }]);
+    } finally {
+      setIsThinking(false);
+      scrollToBottom();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -55,86 +153,344 @@ export default function ChatPage() {
     }
   };
 
-  const handleNewChat = () => {
-    if (messages.length > 0) {
-      if (confirm("确定要开始新对话吗？")) {
-        createNewSession();
-      }
-    } else {
-      createNewSession();
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputValue(suggestion);
+    setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  const handleClear = () => {
+    if (messages.length > 0 && confirm("确定要清空当前对话？")) {
+      setMessages([]);
     }
   };
 
+  const handleNewChat = () => {
+    if (messages.length > 0 && confirm("确定要开始新对话吗？")) {
+      setMessages([]);
+      setShowSuggestions(true);
+    }
+  };
+
+  const staticSuggestions = [
+    "你平时在想什么？",
+    "你怎么看欲望？",
+    "AI 产品经理是做什么的？",
+    "你为什么会关注心理学？"
+  ];
+
+  if (!isReady) {
+    return (
+      <div style={{ 
+        height: "100vh", 
+        width: "100vw", 
+        background: "#0b0b0c", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center",
+        color: "#555",
+        fontSize: "14px"
+      }}>
+        加载中...
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen w-full bg-[#0b0b0c] text-[#e6e6e6] flex flex-col">
-      <header className="h-12 flex items-center justify-center text-xs text-[#555] border-b border-[#1a1a1c] tracking-widest">
-        在场
+    <div style={{ 
+      height: "100vh", 
+      width: "100vw", 
+      background: "#0b0b0c", 
+      color: "#e6e6e6", 
+      display: "flex", 
+      flexDirection: "column",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif"
+    }}>
+      <header style={{ 
+        height: "48px", 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "space-between",
+        padding: "0 24px",
+        borderBottom: "1px solid #1a1a1c"
+      }}>
+        <button
+          onClick={() => router.back()}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#555",
+            fontSize: "14px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.color = "#888")}
+          onMouseOut={(e) => (e.currentTarget.style.color = "#555")}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 19l-7-7 7-7" />
+          </svg>
+          返回
+        </button>
+        
+        <span style={{ 
+          fontSize: "12px", 
+          color: "#555",
+          letterSpacing: "0.1em"
+        }}>
+          在场
+        </span>
+        
+        <div style={{ display: "flex", gap: "12px", fontSize: "14px" }}>
+          {messages.length > 0 && (
+            <button
+              onClick={handleClear}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#555",
+                cursor: "pointer"
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = "#888")}
+              onMouseOut={(e) => (e.currentTarget.style.color = "#555")}
+            >
+              清空
+            </button>
+          )}
+          <button
+            onClick={handleNewChat}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#555",
+              cursor: "pointer"
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.color = "#888")}
+            onMouseOut={(e) => (e.currentTarget.style.color = "#555")}
+          >
+            新对话
+          </button>
+        </div>
       </header>
 
-      <div ref={containerRef} className="flex-1 overflow-y-auto">
-        <div className="max-w-[720px] mx-auto px-6 py-8">
-          <div className="space-y-8">
-            {messages.length === 0 && (
-              <div className="pt-8 pb-4">
-                <div className="text-[15px] text-[#e6e6e6] mb-6 whitespace-pre-wrap">
-                  {welcomeMessage.greeting}
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                  {[
-                    "你平时在想什么？",
-                    "你怎么看欲望？",
-                    "AI 产品经理是做什么的？",
-                    "你为什么会关注心理学？"
-                  ].map((question, index) => (
-                    <button
-                      key={index}
-                      onClick={() => sendMessage(question)}
-                      className="px-4 py-3 text-left text-[#666] hover:text-[#aaa] transition-colors duration-200 text-sm"
-                    >
-                      → {question}
-                    </button>
-                  ))}
-                </div>
+      <div 
+        ref={containerRef}
+        style={{ 
+          flex: 1, 
+          overflow: "auto",
+          padding: "32px 24px"
+        }}
+      >
+        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+          {messages.length === 0 ? (
+            <div style={{ paddingTop: "16px" }}>
+              <div style={{ 
+                fontSize: "15px",
+                marginBottom: "32px",
+                lineHeight: 1.6,
+                whiteSpace: "pre-wrap"
+              }}>
+                我在。
+                你可以直接说你在想什么。
               </div>
-            )}
-
-            {messages.map((msg, i) => (
-              <MessageBlock 
-                key={i} 
-                message={msg} 
-                isFirst={i === 0 || (i > 0 && messages[i-1].role !== msg.role)}
-              />
-            ))}
-
-            {isThinking && (
-              <div className="text-[#555] text-sm italic py-2">
-                …
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {staticSuggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#666",
+                      fontSize: "14px",
+                      textAlign: "left",
+                      padding: "12px 16px",
+                      cursor: "pointer",
+                      borderRadius: "8px",
+                      transition: "color 0.2s"
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.color = "#aaa")}
+                    onMouseOut={(e) => (e.currentTarget.style.color = "#666")}
+                  >
+                    → {suggestion}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {messages.map((msg) => (
+                <div key={msg.id}>
+                  {msg.role === "user" ? (
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <div style={{
+                        background: "#1a1a1c",
+                        color: "#ddd",
+                        padding: "10px 16px",
+                        borderRadius: "16px",
+                        maxWidth: "75%",
+                        fontSize: "14px",
+                        lineHeight: 1.5
+                      }}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      fontSize: "15px",
+                      lineHeight: 1.7,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word"
+                    }}>
+                      {msg.content}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {isThinking && (
+                <div style={{ 
+                  color: "#888", 
+                  fontSize: "14px", 
+                  padding: "12px 0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}>
+                  <div style={{ 
+                    display: "flex", 
+                    gap: "4px"
+                  }}>
+                    <span style={{ 
+                      width: "6px", 
+                      height: "6px", 
+                      borderRadius: "50%", 
+                      background: "#D6A77A",
+                      animation: "bounce 1.4s ease-in-out infinite both"
+                    }} />
+                    <span style={{ 
+                      width: "6px", 
+                      height: "6px", 
+                      borderRadius: "50%", 
+                      background: "#D6A77A",
+                      animation: "bounce 1.4s ease-in-out 0.16s infinite both"
+                    }} />
+                    <span style={{ 
+                      width: "6px", 
+                      height: "6px", 
+                      borderRadius: "50%", 
+                      background: "#D6A77A",
+                      animation: "bounce 1.4s ease-in-out 0.32s infinite both"
+                    }} />
+                  </div>
+                  <style>{`
+                    @keyframes bounce {
+                      0%, 80%, 100% { transform: scale(0); }
+                      40% { transform: scale(1); }
+                    }
+                  `}</style>
+                  <span style={{ color: "#666" }}>正在思考...</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="border-t border-[#1a1a1c] px-4 py-4">
-        <div className="max-w-[720px] mx-auto flex items-end gap-3">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="你现在在想什么？"
-            rows={1}
-            disabled={isThinking}
-            className="flex-1 bg-[#111113] border border-[#1a1a1c] rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-[#2a2a2c] text-[#e6e6e6] placeholder:text-[#555] disabled:opacity-50 transition-colors duration-200"
-          />
+      <div style={{ borderTop: "1px solid #1a1a1c", padding: "16px 24px" }}>
+        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+          {showSuggestions && inputValue === "" && messages.length === 0 && (
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {staticSuggestions.slice(0, 3).map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#555",
+                      fontSize: "13px",
+                      textAlign: "left",
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      borderRadius: "6px"
+                    }}
+                    onMouseOver={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color = "#888";
+                      (e.currentTarget as HTMLButtonElement).style.background = "#1a1a1c";
+                    }}
+                    onMouseOut={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.color = "#555";
+                      (e.currentTarget as HTMLButtonElement).style.background = "none";
+                    }}
+                  >
+                    → {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim() || isThinking}
-            className="text-[#666] hover:text-[#aaa] transition-colors duration-200 text-sm disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            发送
-          </button>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: "12px" }}>
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onFocus={handleInputFocus}
+              placeholder="你在想什么？"
+              rows={1}
+              disabled={isThinking}
+              style={{
+                flex: 1,
+                background: "#111113",
+                border: "1px solid #1a1a1c",
+                borderRadius: "12px",
+                padding: "12px 16px",
+                fontSize: "14px",
+                color: "#e6e6e6",
+                outline: "none",
+                resize: "none",
+                minHeight: "48px",
+                maxHeight: "120px",
+                transition: "border-color 0.2s"
+              }}
+            />
+            
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim() || isThinking}
+              style={{
+                background: inputValue.trim() && !isThinking ? "#D6A77A" : "none",
+                border: "none",
+                borderRadius: "8px",
+                padding: inputValue.trim() && !isThinking ? "10px 16px" : "10px 16px",
+                color: inputValue.trim() && !isThinking ? "#fff" : "#444",
+                fontSize: "14px",
+                cursor: inputValue.trim() && !isThinking ? "pointer" : "not-allowed",
+                transition: "all 0.2s ease",
+                fontWeight: "500"
+              }}
+              onMouseOver={(e) => {
+                if (inputValue.trim() && !isThinking) {
+                  (e.currentTarget as HTMLButtonElement).style.opacity = "0.9";
+                  (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.02)";
+                }
+              }}
+              onMouseOut={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.opacity = "1";
+                (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                (e.currentTarget as HTMLButtonElement).style.color = 
+                  inputValue.trim() && !isThinking ? "#fff" : "#444";
+              }}
+            >
+              发送
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -2,25 +2,32 @@
 
 import React, { Component, ReactNode } from "react";
 
-interface Props {
+interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean;
   error?: Error;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
+// 错误边界组件 - 捕获子组件的渲染错误
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
+    
+    // 调用自定义错误处理
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
   }
 
   render() {
@@ -54,10 +61,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+// 异步边界组件 - 处理异步加载状态
 interface AsyncBoundaryProps {
   children: ReactNode;
   loading?: ReactNode;
   errorFallback?: ReactNode;
+  onRetry?: () => void;
 }
 
 interface AsyncBoundaryState {
@@ -72,6 +81,14 @@ export class AsyncBoundary extends Component<AsyncBoundaryProps, AsyncBoundarySt
     return { hasError: true };
   }
 
+  // 重试方法
+  retry = () => {
+    this.setState({ hasError: false, isLoading: true });
+    if (this.props.onRetry) {
+      this.props.onRetry();
+    }
+  };
+
   render() {
     if (this.state.hasError) {
       return this.props.errorFallback || (
@@ -85,7 +102,7 @@ export class AsyncBoundary extends Component<AsyncBoundaryProps, AsyncBoundarySt
               抱歉，数据加载时遇到了问题
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={this.retry}
               className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
             >
               重试
@@ -107,6 +124,7 @@ export class AsyncBoundary extends Component<AsyncBoundaryProps, AsyncBoundarySt
   }
 }
 
+// 高阶组件包装器
 export function withAsyncBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
   loading?: ReactNode,
@@ -119,4 +137,26 @@ export function withAsyncBoundary<P extends object>(
       </AsyncBoundary>
     );
   };
+}
+
+// 错误日志钩子
+export function useErrorLogging() {
+  const logError = (error: Error, context?: string) => {
+    const errorInfo = {
+      message: error.message,
+      stack: error.stack,
+      context,
+      timestamp: new Date().toISOString(),
+      userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
+    };
+    
+    console.error('[Error Log]', errorInfo);
+    
+    // 可以在这里添加错误上报逻辑
+    // if (process.env.NODE_ENV === 'production') {
+    //   reportError(errorInfo);
+    // }
+  };
+
+  return { logError };
 }

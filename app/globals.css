@@ -7,11 +7,13 @@
   --bg-primary: #F7F6F3;
   --bg-secondary: #FFFFFF;
   --bg-soft: #EFECE8;
+  --bg-dark: #0b0b0c;
 
   /* 文字 */
   --text-primary: #1F2933;
   --text-secondary: #6B6B6B;
   --text-muted: #9A9A9A;
+  --text-dark: #e6e6e6;
 
   /* 分割 */
   --border-light: #E5E5E5;
@@ -40,6 +42,7 @@ body {
   font-family: var(--font-body);
   background: var(--bg-primary);
   color: var(--text-primary);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 body {

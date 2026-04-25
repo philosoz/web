@@ -1,46 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
 import path from "path";
-
-const UPLOAD_DIR = path.join(process.cwd(), "public", "resume");
-const METADATA_FILE = path.join(UPLOAD_DIR, ".metadata.json");
-
-interface ResumeMetadata {
-  id: string;
-  url: string;
-  fileName: string;
-  uploadedAt: string;
-  isActive: boolean;
-}
-
-interface MetadataStore {
-  resumes: ResumeMetadata[];
-}
-
-async function ensureDir(dirPath: string): Promise<void> {
-  try {
-    await fs.access(dirPath);
-  } catch {
-    await fs.mkdir(dirPath, { recursive: true });
-  }
-}
-
-async function readMetadata(): Promise<MetadataStore> {
-  try {
-    const data = await fs.readFile(METADATA_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return { resumes: [] };
-  }
-}
-
-async function writeMetadata(metadata: MetadataStore): Promise<void> {
-  await fs.writeFile(METADATA_FILE, JSON.stringify(metadata, null, 2), "utf-8");
-}
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
+import {
+  ensureDir,
+  readMetadata,
+  addResume,
+  validateFile,
+  UPLOAD_DIR,
+} from "@/lib/resume-api";
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,54 +22,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "image/jpeg",
-      "image/png",
-      "image/jpg",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
+    // 验证文件 (异步)
+    const validation = await validateFile(file);
+    if (!validation.valid) {
       return NextResponse.json(
-        { success: false, error: "只支持 PDF、Word、图片文件" },
+        { success: false, error: validation.error },
         { status: 400 }
       );
     }
 
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { success: false, error: "文件大小不能超过 10MB" },
-        { status: 400 }
-      );
-    }
-
+    // 生成唯一文件名
     const timestamp = Date.now();
     const uuid = crypto.randomUUID();
     const fileExt = path.extname(file.name).toLowerCase();
     const fileName = `${timestamp}-${uuid}${fileExt}`;
     const filePath = path.join(UPLOAD_DIR, fileName);
 
+    // 保存文件
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    
+    const fs = await import("fs/promises");
     await fs.writeFile(filePath, buffer);
 
-    const metadata = await readMetadata();
-    
-    metadata.resumes.forEach(r => r.isActive = false);
-
-    const resume: ResumeMetadata = {
-      id: generateId(),
-      url: `/resume/${fileName}`,
-      fileName: file.name,
-      uploadedAt: new Date().toISOString(),
-      isActive: true,
-    };
-
-    metadata.resumes.push(resume);
-    await writeMetadata(metadata);
+    // 添加到元数据
+    const resume = await addResume(file.name, `/resume/${fileName}`);
 
     return NextResponse.json({
       success: true,
