@@ -44,9 +44,6 @@ export function ChatInput({ onSend, loading }: ChatInputProps) {
           {loading ? "..." : "发送"}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mt-2 text-center max-w-3xl mx-auto">
-        AI回答可能不完全准确，仅供参考。
-      </p>
     </div>
   );
 }

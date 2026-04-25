@@ -242,6 +242,20 @@ export function useChat() {
     }
   }, [sessions]);
 
+  const clearCurrentSession = useCallback(() => {
+    if (!currentSessionId) return;
+    
+    const defaultMessage: Message = {
+      role: "assistant",
+      content: "你好！我是AI助手，有什么可以帮助你的吗？"
+    };
+    
+    setMessages([defaultMessage]);
+    updateSession(currentSessionId, { messages: [defaultMessage] });
+    const updatedSessions = loadAllSessions();
+    setSessions(updatedSessions);
+  }, [currentSessionId]);
+
   return {
     messages,
     sendMessage,
@@ -251,6 +265,7 @@ export function useChat() {
     switchSession,
     createNewSession,
     deleteCurrentSession,
+    clearCurrentSession,
     toggleFavorite,
     profile,
     welcomeMessage,

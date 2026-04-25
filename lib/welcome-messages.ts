@@ -79,12 +79,12 @@ export function generateWelcomeMessage(
 ): WelcomeMessage {
   if (profile.visitCount <= 1) {
     return {
-      greeting: "你好呀，很高兴见到你。我是张海挺，有什么想聊的吗？",
+      greeting: "随便聊聊？",
       suggestions: [
-        "你最近在写什么？",
-        "你是怎么思考问题的？",
-        "有什么值得看的内容吗？",
-        "你平时喜欢做什么？"
+        "最近在折腾什么？",
+        "有什么新想法？",
+        "最近在看什么书？",
+        "随便聊聊"
       ]
     };
   }
@@ -93,7 +93,7 @@ export function generateWelcomeMessage(
   const interests = profile.interests;
   
   const welcome: WelcomeMessage = {
-    greeting: `欢迎回来！${getGreetingByTime()}上次聊到${getTopicSummary(recentSession)}...`,
+    greeting: "又来啦。这次想聊什么？",
     suggestions: generateSuggestionsByInterest(interests)
   };
   
@@ -120,12 +120,12 @@ function getGreetingByTime(): string {
 
 export function getDefaultWelcomeMessage(): WelcomeMessage {
   return {
-    greeting: "你好呀，很高兴见到你。我是张海挺，有什么想聊的吗？",
+    greeting: "随便聊聊？",
     suggestions: [
-      "你最近在写什么？",
-      "你是怎么思考问题的？",
-      "有什么值得看的内容吗？",
-      "你平时喜欢做什么？"
+      "最近在折腾什么？",
+      "有什么新想法？",
+      "最近在看什么书？",
+      "随便聊聊"
     ]
   };
 }

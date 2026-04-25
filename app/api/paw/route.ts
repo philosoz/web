@@ -5,7 +5,9 @@ const TIMEOUT_MS = 5000;
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 3000];
 
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || (
+  process.env.NODE_ENV === "development" ? "*" : "https://yourdomain.com"
+);
 
 function getCorsHeaders() {
   return {
@@ -59,19 +61,13 @@ export async function GET() {
 
     return NextResponse.json(
       { count },
-      {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
-        },
-      }
+      { headers: getCorsHeaders() }
     );
   } catch (error) {
     logError("GET /api/paw", error, timestamp);
     return NextResponse.json(
       { error: "Failed to get count" },
-      { status: 500, headers: { "Access-Control-Allow-Origin": "*" } }
+      { status: 500, headers: getCorsHeaders() }
     );
   }
 }

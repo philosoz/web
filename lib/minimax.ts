@@ -5,9 +5,12 @@ export type ChatMessage = {
 
 const MINIMAX_API_URL = "https://api.minimaxi.com/v1/text/chatcompletion_v2";
 
-export async function streamMiniMaxReply(messages: ChatMessage[]) {
+export async function streamMiniMaxReply(
+  messages: ChatMessage[],
+  enableWebSearch = false
+) {
   const apiKey = process.env.MINIMAX_API_KEY;
-  const model = process.env.MINIMAX_MODEL || "MiniMax-M2.7";
+  const model = process.env.MINIMAX_MODEL || "MiniMax-M2";
 
   if (!apiKey) {
     throw new Error("Missing MINIMAX_API_KEY");
@@ -18,19 +21,31 @@ export async function streamMiniMaxReply(messages: ChatMessage[]) {
     content: msg.content,
   }));
 
+  const requestBody: Record<string, unknown> = {
+    model,
+    tokens_to_generate: 1024,
+    temperature: 0.5,
+    messages: formattedMessages,
+    stream: true,
+  };
+
+  if (enableWebSearch) {
+    requestBody.tools = [
+      {
+        type: "web_search",
+        name: "web_search",
+        description: "搜索最新信息，用于回答实时性问题",
+      },
+    ];
+  }
+
   const response = await fetch(MINIMAX_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      tokens_to_generate: 1024,
-      temperature: 0.7,
-      messages: formattedMessages,
-      stream: true,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {

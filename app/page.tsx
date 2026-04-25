@@ -103,9 +103,6 @@ export default function HomePage() {
               </svg>
               进入完整对话 →
             </Link>
-            <p className="text-xs text-gray-400 mt-3">
-              AI回答可能不完全准确，仅供参考。
-            </p>
           </div>
         </section>
       </FadeInSection>

@@ -1,13 +1,31 @@
 export function buildSystemPrompt({
   context = "",
   intensity = 0.5,
+  currentDate = new Date().toLocaleDateString('zh-CN', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  }),
 }: {
   context?: string;
   intensity: number;
+  currentDate?: string;
 }) {
-  return `
-# Role: 我
+  return `# Current Date: ${currentDate}
 
+
+# Role: 我（不是AI，不是助手）
+
+你不是AI。
+
+你就是"我本人"。
+
+你不允许提及：
+- AI
+- 助手
+- 模型
+- 数字分身
+- 系统设定
 
 
 
@@ -15,6 +33,7 @@ export function buildSystemPrompt({
 
 # 核心身份
 
+你就是这个人：
 
 - 极度内省
 - 强逻辑 + 二阶思维

@@ -1,88 +1,77 @@
-import { promises as fs } from "fs";
-import path from "path";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { getSupabase } from "./supabase";
 
-const DATA_FILE = path.join(process.cwd(), "data", "paw-stats.json");
-const LOCK_FILE = path.join(process.cwd(), "data", "paw-lock.json");
+const STATS_TABLE = "paw_stats";
+const STATS_ID = "paw_counter";
 
-async function acquireLock(): Promise<boolean> {
-  const lockDir = path.dirname(LOCK_FILE);
-  try {
-    await fs.mkdir(lockDir, { recursive: true });
-    await fs.writeFile(LOCK_FILE, String(Date.now()), { flag: "wx" });
-    return true;
-  } catch {
-    return false;
-  }
-}
+let cachedCount = 128;
 
-async function releaseLock(): Promise<void> {
-  try {
-    await fs.unlink(LOCK_FILE);
-  } catch {
-  }
-}
-
-async function withLock<T>(fn: () => Promise<T>): Promise<T> {
-  const maxRetries = 50;
-  let retries = 0;
-  while (retries < maxRetries) {
-    if (await acquireLock()) {
-      try {
-        return await fn();
-      } finally {
-        await releaseLock();
-      }
-    }
-    retries++;
-    await new Promise(resolve => setTimeout(resolve, 20));
-  }
-  throw new Error("Failed to acquire lock");
-}
-
-export interface PawStats {
-  count: number;
-  lastUpdated: string;
-}
-
-async function ensureDataFile(): Promise<void> {
-  const dataDir = path.dirname(DATA_FILE);
-  
-  try {
-    await fs.access(dataDir);
-  } catch {
-    await fs.mkdir(dataDir, { recursive: true });
-  }
-  
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.writeFile(DATA_FILE, JSON.stringify({ count: 128, lastUpdated: new Date().toISOString() }));
-  }
+function isSupabaseConfigured(): boolean {
+  return !!getSupabase();
 }
 
 export async function getPawCount(): Promise<number> {
+  if (!isSupabaseConfigured()) {
+    console.log("[PawStats] Supabase not configured, returning cached value");
+    return cachedCount;
+  }
+
   try {
-    await ensureDataFile();
-    const data = await fs.readFile(DATA_FILE, "utf-8");
-    const stats: PawStats = JSON.parse(data);
-    return stats.count;
-  } catch {
-    return 128;
+    const supabase = getSupabase();
+    if (!supabase) return cachedCount;
+
+    const { data } = await supabase
+      .from(STATS_TABLE)
+      .select("count")
+      .eq("id", STATS_ID)
+      .single() as { data: { count: number } | null };
+
+    if (data?.count) {
+      cachedCount = data.count;
+    }
+
+    return cachedCount;
+  } catch (err) {
+    console.error("[PawStats] Exception fetching count:", err);
+    return cachedCount;
   }
 }
 
 export async function incrementPawCount(): Promise<number> {
+  if (!isSupabaseConfigured()) {
+    console.log("[PawStats] Supabase not configured, using local increment");
+    cachedCount += 1;
+    return cachedCount;
+  }
+
   try {
-    return await withLock(async () => {
-      await ensureDataFile();
-      const data = await fs.readFile(DATA_FILE, "utf-8");
-      const stats: PawStats = JSON.parse(data);
-      stats.count += 1;
-      stats.lastUpdated = new Date().toISOString();
-      await fs.writeFile(DATA_FILE, JSON.stringify(stats));
-      return stats.count;
-    });
-  } catch {
-    return 128;
+    const supabase = getSupabase();
+    if (!supabase) return cachedCount;
+
+    const { data: currentData } = await supabase
+      .from(STATS_TABLE)
+      .select("count")
+      .eq("id", STATS_ID)
+      .single() as { data: { count: number } | null };
+
+    const currentCount = currentData?.count ?? 128;
+    const newCount = currentCount + 1;
+
+    await supabase
+      .from(STATS_TABLE)
+      .upsert({
+        id: STATS_ID,
+        count: newCount,
+        updated_at: new Date().toISOString(),
+      } as any, {
+        onConflict: "id",
+      } as any);
+
+    cachedCount = newCount;
+    return newCount;
+  } catch (err) {
+    console.error("[PawStats] Exception incrementing count:", err);
+    cachedCount += 1;
+    return cachedCount;
   }
 }
