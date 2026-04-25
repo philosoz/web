@@ -1,9 +1,26 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
 
 const LOCAL_DATA_FILE = path.join(process.cwd(), "data", "paw-stats.json");
 const KV_KEY = "paw_count";
+
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null;
+  }
+
+  if (!redis) {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+
+  return redis;
+}
 
 async function getLocalCount(): Promise<number> {
   try {
@@ -26,19 +43,16 @@ async function setLocalCount(count: number): Promise<void> {
   }
 }
 
-function isVercelKvConfigured(): boolean {
-  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
-}
-
 export async function getPawCount(): Promise<number> {
-  if (isVercelKvConfigured()) {
+  const client = getRedis();
+  if (client) {
     try {
-      const count = await kv.get<number>(KV_KEY);
+      const count = await client.get<number>(KV_KEY);
       if (typeof count === "number") {
         return count;
       }
     } catch (err) {
-      console.error("[PawStats] Vercel KV get failed:", err);
+      console.error("[PawStats] Upstash get failed:", err);
     }
   }
 
@@ -46,16 +60,17 @@ export async function getPawCount(): Promise<number> {
 }
 
 export async function incrementPawCount(): Promise<number> {
-  if (isVercelKvConfigured()) {
+  const client = getRedis();
+  if (client) {
     try {
-      const count = await kv.get<number>(KV_KEY);
+      const count = await client.get<number>(KV_KEY);
       const currentCount = typeof count === "number" ? count : await getLocalCount();
       const newCount = currentCount + 1;
 
-      await kv.set(KV_KEY, newCount);
+      await client.set(KV_KEY, newCount);
       return newCount;
     } catch (err) {
-      console.error("[PawStats] Vercel KV increment failed:", err);
+      console.error("[PawStats] Upstash increment failed:", err);
     }
   }
 
