@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamMiniMaxReply } from "@/lib/minimax";
-import { systemPrompt } from "@/lib/prompt";
+import { buildSystemPrompt } from "@/lib/prompt";
 import { buildRAGContext } from "@/lib/rag";
 
 export const runtime = "edge";
@@ -9,19 +9,22 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as {
       messages?: Array<{ role: string; content: string }>;
+      intensity?: number;
     };
 
     const rawMessages = body.messages ?? [];
     const userMessage = rawMessages[rawMessages.length - 1]?.content || "";
+    const intensity = body.intensity ?? 0.5;
 
     const ragContext = buildRAGContext(userMessage);
     
-    const fullPrompt = ragContext 
-      ? `${systemPrompt}\n\n【你可以参考的文章】\n${ragContext}\n\n请结合以上文章回答，如果文章不相关就不提。`
-      : systemPrompt;
+    const systemPrompt = buildSystemPrompt({
+      context: ragContext,
+      intensity,
+    });
 
     const messages = [
-      { role: "system" as const, content: fullPrompt },
+      { role: "system" as const, content: systemPrompt },
       ...rawMessages.slice(-10).map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
