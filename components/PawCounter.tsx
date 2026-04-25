@@ -4,24 +4,21 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface PawCounterProps {
-  initialCount?: number;
+  initialCount?: number | null;
   showAddOne?: boolean;
   onCountUpdate?: (count: number) => void;
 }
 
-export default function PawCounter({ initialCount = 128, showAddOne = false, onCountUpdate }: PawCounterProps) {
+export default function PawCounter({ initialCount, showAddOne = false, onCountUpdate }: PawCounterProps) {
   const [showPlus, setShowPlus] = useState(false);
   const [count, setCount] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const prevCountRef = useRef<number | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   const animationKeyRef = useRef(0);
 
   useEffect(() => {
-    setIsLoading(true);
     if (initialCount !== undefined && initialCount !== null) {
       setCount(initialCount);
-      prevCountRef.current = initialCount;
-      setIsLoading(false);
+      setIsLoaded(true);
     }
   }, [initialCount]);
 
@@ -32,7 +29,6 @@ export default function PawCounter({ initialCount = 128, showAddOne = false, onC
     animationKeyRef.current += 1;
     const newCount = count + 1;
     setCount(newCount);
-    prevCountRef.current = newCount;
     onCountUpdate?.(newCount);
 
     setTimeout(() => setShowPlus(false), 800);
@@ -43,7 +39,7 @@ export default function PawCounter({ initialCount = 128, showAddOne = false, onC
       <div className="flex items-center gap-2">
         <span>今天有 </span>
         <AnimatePresence mode="wait">
-          {isLoading || count === null ? (
+          {!isLoaded || count === null ? (
             <motion.span
               key="loading"
               initial={{ opacity: 0 }}
@@ -54,7 +50,7 @@ export default function PawCounter({ initialCount = 128, showAddOne = false, onC
             />
           ) : (
             <motion.span
-              key={`count-${animationKeyRef.current}`}
+              key={`count-${count}`}
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
@@ -92,15 +88,4 @@ export default function PawCounter({ initialCount = 128, showAddOne = false, onC
       )}
     </div>
   );
-}
-
-export function usePawCounter() {
-  const [showPlus, setShowPlus] = useState(false);
-
-  const addOne = () => {
-    setShowPlus(true);
-    setTimeout(() => setShowPlus(false), 800);
-  };
-
-  return { showPlus, addOne };
 }

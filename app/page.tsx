@@ -7,7 +7,7 @@ import PawCounter from "@/components/PawCounter";
 import FadeInSection from "@/components/FadeInSection";
 
 export default function HomePage() {
-  const [pawCount, setPawCount] = useState(128);
+  const [pawCount, setPawCount] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/paw")
