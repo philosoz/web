@@ -4,19 +4,19 @@
 
 :root {
   /* 背景 */
-  --bg-primary: #F7F6F3;
+  --bg-primary: #FAFAF8;
   --bg-secondary: #FFFFFF;
-  --bg-soft: #EFECE8;
+  --bg-soft: #F5F5F3;
   --bg-dark: #0b0b0c;
 
   /* 文字 */
-  --text-primary: #1F2933;
-  --text-secondary: #6B6B6B;
-  --text-muted: #9A9A9A;
+  --text-primary: #2D2D2D;
+  --text-secondary: #8A8A8A;
+  --text-muted: #A0A0A0;
   --text-dark: #e6e6e6;
 
   /* 分割 */
-  --border-light: #E5E5E5;
+  --border-light: #E8E5E0;
 
   /* 功能色 */
   --accent-warm: #D6A77A;

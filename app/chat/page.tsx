@@ -10,13 +10,23 @@ interface Message {
 }
 
 const colors = {
-  background: "#FAFAF8",
-  primaryText: "#2D2D2D",
-  secondaryText: "#8A8A8A",
-  border: "#E8E5E0",
-  accent: "#D6A77A",
-  userBubble: "#F5F5F3",
+  background: "var(--bg-primary)",
+  primaryText: "var(--text-primary)",
+  secondaryText: "var(--text-secondary)",
+  border: "var(--border-light)",
+  accent: "var(--accent-warm)",
+  userBubble: "var(--bg-soft)",
 };
+
+const CACHE_KEY = 'ai-suggestions-v2';
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24小时
+
+const defaultSuggestions = [
+  "想聊欲望本质？",
+  "最近在纠结什么？",
+  "有什么反复出现的念头？",
+  "有什么代码让你卡住了？",
+];
 
 export default function ChatPage() {
   const router = useRouter();
@@ -24,15 +34,62 @@ export default function ChatPage() {
   const [inputValue, setInputValue] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     setIsReady(true);
+    loadSuggestions();
   }, []);
+
+  const loadSuggestions = async () => {
+    // 尝试从缓存加载
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { suggestions: cachedSuggestions, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION && cachedSuggestions.length > 0) {
+          setSuggestions(cachedSuggestions);
+          setLoadingSuggestions(false);
+          return;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 调用 AI 生成推荐
+    try {
+      const res = await fetch("/api/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count: 4 }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.suggestions && data.suggestions.length > 0) {
+          setSuggestions(data.suggestions);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            suggestions: data.suggestions,
+            timestamp: Date.now()
+          }));
+        } else {
+          setSuggestions(defaultSuggestions);
+        }
+      } else {
+        setSuggestions(defaultSuggestions);
+      }
+    } catch {
+      setSuggestions(defaultSuggestions);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
 
   const scrollToBottom = useCallback(() => {
     if (containerRef.current) {
@@ -48,7 +105,6 @@ export default function ChatPage() {
   }, [scrollToBottom, messages, isThinking]);
 
   const handleInputFocus = () => {
-    setShowSuggestions(true);
     setIsInputFocused(true);
   };
 
@@ -59,9 +115,6 @@ export default function ChatPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setInputValue(value);
-    if (value.trim()) {
-      setShowSuggestions(false);
-    }
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
   };
@@ -83,7 +136,6 @@ export default function ChatPage() {
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInputValue("");
-    setShowSuggestions(false);
     setIsThinking(true);
 
     if (inputRef.current) {
@@ -91,29 +143,14 @@ export default function ChatPage() {
     }
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: newMessages }),
-        signal: abortControllerRef.current?.signal,
+        signal: abortControllerRef.current.signal,
       });
 
-      clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        let errorMessage = "服务暂时不可用";
-        if (res.status === 503) {
-          errorMessage = "AI 服务暂时不可用，请稍后重试";
-        } else if (res.status === 429) {
-          errorMessage = "请求过于频繁，请稍后再试";
-        } else if (res.status === 401) {
-          errorMessage = "服务认证失败，请联系管理员";
-        }
-        throw new Error(errorMessage);
-      }
+      if (!res.ok) throw new Error("API error");
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No reader");
@@ -141,20 +178,7 @@ export default function ChatPage() {
       if (error instanceof Error && error.name === "AbortError") {
         return;
       }
-      
-      let errorMessage = "嗯…出了点问题。";
-      
-      if (error instanceof Error) {
-        if (error.message.includes("timeout") || error.message.includes("Timeout")) {
-          errorMessage = "请求超时，请稍后重试。";
-        } else if (error.message.includes("network") || error.message.includes("Network")) {
-          errorMessage = "网络连接失败，请检查网络后重试。";
-        } else if (error.message.includes("服务暂时不可用")) {
-          errorMessage = error.message;
-        }
-      }
-      
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: errorMessage }]);
+      setMessages(prev => [...prev, { id: (Date.now() + 2).toString(), role: "assistant", content: "嗯…出了点问题。" }]);
     } finally {
       setIsThinking(false);
       scrollToBottom();
@@ -170,7 +194,6 @@ export default function ChatPage() {
 
   const handleSuggestionClick = (suggestion: string) => {
     setInputValue(suggestion);
-    setShowSuggestions(false);
     inputRef.current?.focus();
   };
 
@@ -183,16 +206,8 @@ export default function ChatPage() {
   const handleNewChat = () => {
     if (messages.length > 0 && confirm("确定要开始新对话吗？")) {
       setMessages([]);
-      setShowSuggestions(true);
     }
   };
-
-  const staticSuggestions = [
-    "你平时在想什么？",
-    "你怎么看欲望？",
-    "AI 产品经理是做什么的？",
-    "你为什么会关注心理学？"
-  ];
 
   if (!isReady) {
     return (
@@ -320,37 +335,43 @@ export default function ChatPage() {
                 你可以直接说你在想什么。
               </p>
               
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {staticSuggestions.map((suggestion, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    style={{
-                      background: "transparent",
-                      border: `1px solid ${colors.border}`,
-                      color: colors.secondaryText,
-                      fontSize: "14px",
-                      textAlign: "left",
-                      padding: "14px 18px",
-                      cursor: "pointer",
-                      borderRadius: "10px",
-                      transition: "all 0.2s ease"
-                    }}
-                    onMouseOver={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = colors.accent;
-                      (e.currentTarget as HTMLButtonElement).style.color = colors.primaryText;
-                      (e.currentTarget as HTMLButtonElement).style.background = colors.userBubble;
-                    }}
-                    onMouseOut={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = colors.border;
-                      (e.currentTarget as HTMLButtonElement).style.color = colors.secondaryText;
-                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                    }}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              {loadingSuggestions ? (
+                <div style={{ color: colors.secondaryText, fontSize: "14px" }}>
+                  加载中...
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {suggestions.map((suggestion, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      style={{
+                        background: "transparent",
+                        border: `1px solid ${colors.border}`,
+                        color: colors.secondaryText,
+                        fontSize: "14px",
+                        textAlign: "left",
+                        padding: "14px 18px",
+                        cursor: "pointer",
+                        borderRadius: "10px",
+                        transition: "all 0.2s ease"
+                      }}
+                      onMouseOver={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = colors.accent;
+                        (e.currentTarget as HTMLButtonElement).style.color = colors.primaryText;
+                        (e.currentTarget as HTMLButtonElement).style.background = colors.userBubble;
+                      }}
+                      onMouseOut={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = colors.border;
+                        (e.currentTarget as HTMLButtonElement).style.color = colors.secondaryText;
+                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                      }}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -394,10 +415,7 @@ export default function ChatPage() {
                   alignItems: "center",
                   gap: "8px"
                 }}>
-                  <div style={{ 
-                    display: "flex", 
-                    gap: "4px"
-                  }}>
+                  <div style={{ display: "flex", gap: "4px" }}>
                     <span style={{ 
                       width: "6px", 
                       height: "6px", 
@@ -440,72 +458,6 @@ export default function ChatPage() {
         background: colors.background
       }}>
         <div style={{ maxWidth: "680px", margin: "0 auto" }}>
-          {showSuggestions && inputValue === "" && messages.length === 0 && (
-            <div style={{ marginBottom: "12px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {staticSuggestions.slice(0, 3).map((suggestion, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: colors.secondaryText,
-                      fontSize: "13px",
-                      textAlign: "left",
-                      padding: "8px 12px",
-                      cursor: "pointer",
-                      borderRadius: "6px"
-                    }}
-                    onMouseOver={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = colors.primaryText;
-                      (e.currentTarget as HTMLButtonElement).style.background = colors.userBubble;
-                    }}
-                    onMouseOut={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = colors.secondaryText;
-                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                    }}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {showSuggestions && inputValue === "" && messages.length > 0 && (
-            <div style={{ marginBottom: "12px" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {staticSuggestions.slice(0, 3).map((suggestion, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color: colors.secondaryText,
-                      fontSize: "13px",
-                      textAlign: "left",
-                      padding: "8px 12px",
-                      cursor: "pointer",
-                      borderRadius: "6px"
-                    }}
-                    onMouseOver={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = colors.primaryText;
-                      (e.currentTarget as HTMLButtonElement).style.background = colors.userBubble;
-                    }}
-                    onMouseOut={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.color = colors.secondaryText;
-                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                    }}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
           <div style={{ 
             display: "flex", 
             alignItems: "flex-end", 
@@ -564,8 +516,6 @@ export default function ChatPage() {
               onMouseOut={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.opacity = "1";
                 (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
-                (e.currentTarget as HTMLButtonElement).style.color = 
-                  inputValue.trim() && !isThinking ? "#fff" : colors.secondaryText;
               }}
             >
               发送
