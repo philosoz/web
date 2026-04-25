@@ -1,29 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import PawInteraction from "@/components/PawInteraction";
+import PawCounter from "@/components/PawCounter";
+import FadeInSection from "@/components/FadeInSection";
 
 export default function HomePage() {
   const [pawCount, setPawCount] = useState(128);
   const [showPlusOne, setShowPlusOne] = useState(false);
-  const [isClicked, setIsClicked] = useState(false);
 
   useEffect(() => {
     fetch("/api/paw")
       .then((res) => res.json())
       .then((data) => {
-        if (data.count) {
+        if (data.count !== undefined) {
           setPawCount(data.count);
         }
       })
       .catch(() => {});
   }, []);
 
-  const handlePawClick = async () => {
-    if (isClicked) return;
-    
-    setIsClicked(true);
-    
+  const handlePawClick = useCallback(async () => {
     try {
       const res = await fetch("/api/paw", { method: "POST" });
       const data = await res.json();
@@ -34,10 +32,8 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error("Failed to increment paw count:", error);
-    } finally {
-      setTimeout(() => setIsClicked(false), 1000);
     }
-  };
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -46,141 +42,183 @@ export default function HomePage() {
           张海挺<span className="ml-1">•</span>
         </Link>
         <nav className="space-x-8 text-sm text-gray-600">
-          <Link href="/notes" className="hover:text-gray-900 transition-colors">笔记</Link>
-          <Link href="/tech" className="hover:text-gray-900 transition-colors">技术</Link>
-          <Link href="/resume" className="hover:text-gray-900 transition-colors">简历</Link>
-          <Link href="/about" className="hover:text-gray-900 transition-colors">关于</Link>
+          <Link href="/notes" className="hover:text-gray-900 transition-colors">
+            笔记
+          </Link>
+          <Link href="/tech" className="hover:text-gray-900 transition-colors">
+            技术
+          </Link>
+          <Link href="/resume" className="hover:text-gray-900 transition-colors">
+            简历
+          </Link>
+          <Link href="/about" className="hover:text-gray-900 transition-colors">
+            关于
+          </Link>
         </nav>
       </header>
 
       <section className="px-8 py-20 max-w-7xl mx-auto grid md:grid-cols-2 gap-10 items-center">
-        <div>
-          <h1 className="text-4xl md:text-5xl leading-relaxed mb-6">
-            我在记录一些<br />还没完全想清楚的事情。
-          </h1>
-          <p className="text-gray-500 mb-6">
-            也许这些文字会在未来的某一天，给你一些启发。
-          </p>
-          <Link
-            href="/chat"
-            className="inline-block bg-[#D6A77A] text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity"
-          >
-            和我聊聊 →
-          </Link>
-        </div>
+        <FadeInSection>
+          <div>
+            <h1 className="text-4xl md:text-5xl leading-relaxed mb-6">
+              我在记录一些<br />还没完全想清楚的事情。
+            </h1>
+            <p className="text-gray-500 mb-6">
+              也许这些文字会在未来的某一天，给你一些启发。
+            </p>
+            <Link
+              href="/chat"
+              className="inline-block bg-[#D6A77A] text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity"
+            >
+              和我聊聊 →
+            </Link>
+          </div>
+        </FadeInSection>
 
-        <div className="relative">
-          <div
-            onClick={handlePawClick}
-            className={`bg-gradient-to-br from-amber-100 to-orange-200 rounded-xl h-[300px] cursor-pointer flex items-center justify-center transition-all ${
-              isClicked ? 'scale-95' : 'hover:scale-105'
-            }`}
-          >
-            <p className="text-amber-800 text-sm bg-white/50 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2">
-              <span>点击留下爪印</span>
-              <span>🐾</span>
+        <FadeInSection delay={0.2}>
+          <div className="relative">
+            <PawInteraction onAddOne={handlePawClick} />
+            <div className="absolute bottom-4 right-4">
+              <PawCounter initialCount={pawCount} />
+            </div>
+          </div>
+        </FadeInSection>
+      </section>
+
+      <FadeInSection>
+        <section className="px-8 pb-20 max-w-3xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h2 className="text-lg mb-2">和我聊聊吧 👋</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              你可以随便问我一些问题，关于生活、技术、思考，或者你感兴趣的任何话题。
+            </p>
+            <div className="bg-gray-100 rounded-lg p-3 mb-4 text-sm">
+              你好呀，我是张海挺。很高兴见到你，有什么想聊的吗？
+            </div>
+            <Link
+              href="/chat"
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-2"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9 9 0 01-9-9c0-4.418 4.03-8 9-8a9 9 0 018 9z"
+                />
+              </svg>
+              进入完整对话 →
+            </Link>
+            <p className="text-xs text-gray-400 mt-3">
+              AI回答可能不完全准确，仅供参考。
             </p>
           </div>
-          
-          <div className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
-            <span>今天有 {pawCount} 只小狗来过 🐾</span>
-            {showPlusOne && (
-              <span className="absolute -top-8 -right-2 text-green-500 font-bold text-lg animate-bounce">
-                +1
-              </span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-8 pb-20 max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-md p-6">
-          <h2 className="text-lg mb-2">和我聊聊吧 👋</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            你可以随便问我一些问题，关于生活、技术、思考，或者你感兴趣的任何话题。
-          </p>
-          <div className="bg-gray-100 rounded-lg p-3 mb-4 text-sm">
-            你好呀，我是张海挺。很高兴见到你，有什么想聊的吗？
-          </div>
-          <Link
-            href="/chat"
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9 9 0 01-9-9c0-4.418 4.03-8 9-8a9 9 0 018 9z"
-              />
-            </svg>
-            进入完整对话 →
-          </Link>
-          <p className="text-xs text-gray-400 mt-3">
-            AI回答可能不完全准确，仅供参考。
-          </p>
-        </div>
-      </section>
+        </section>
+      </FadeInSection>
 
       <section className="px-8 pb-20 max-w-7xl mx-auto grid md:grid-cols-3 gap-6">
-        <Link
-          href="/notes"
-          className="bg-white p-6 rounded-xl shadow-md hover:-translate-y-1 hover:shadow-lg transition-all"
-        >
-          <h3 className="mb-2 font-medium">写生活</h3>
-          <p className="text-sm text-gray-500">一些日常、情绪，没有答案的想法</p>
-        </Link>
-        <Link
-          href="/tech"
-          className="bg-white p-6 rounded-xl shadow-md hover:-translate-y-1 hover:shadow-lg transition-all"
-        >
-          <h3 className="mb-2 font-medium">技术思考</h3>
-          <p className="text-sm text-gray-500">我对问题的理解，以及解决的过程</p>
-        </Link>
-        <Link
-          href="/about"
-          className="bg-white p-6 rounded-xl shadow-md hover:-translate-y-1 hover:shadow-lg transition-all"
-        >
-          <h3 className="mb-2 font-medium">关于我</h3>
-          <p className="text-sm text-gray-500">更确定的部分，我的经历与能力</p>
-        </Link>
+        <FadeInSection delay={0}>
+          <Link
+            href="/notes"
+            className="block bg-white p-6 rounded-xl shadow-md hover:-translate-y-1 hover:shadow-lg transition-all"
+          >
+            <h3 className="mb-2 font-medium">写生活</h3>
+            <p className="text-sm text-gray-500">
+              一些日常、情绪，没有答案的想法
+            </p>
+          </Link>
+        </FadeInSection>
+
+        <FadeInSection delay={0.1}>
+          <Link
+            href="/tech"
+            className="block bg-white p-6 rounded-xl shadow-md hover:-translate-y-1 hover:shadow-lg transition-all"
+          >
+            <h3 className="mb-2 font-medium">技术思考</h3>
+            <p className="text-sm text-gray-500">
+              我对问题的理解，以及解决的过程
+            </p>
+          </Link>
+        </FadeInSection>
+
+        <FadeInSection delay={0.2}>
+          <Link
+            href="/about"
+            className="block bg-white p-6 rounded-xl shadow-md hover:-translate-y-1 hover:shadow-lg transition-all"
+          >
+            <h3 className="mb-2 font-medium">关于我</h3>
+            <p className="text-sm text-gray-500">
+              更确定的部分，我的经历与能力
+            </p>
+          </Link>
+        </FadeInSection>
       </section>
 
       <section className="px-8 pb-20 max-w-7xl mx-auto">
-        <h2 className="text-xl mb-6">最近写的</h2>
+        <FadeInSection>
+          <h2 className="text-xl mb-6">最近写的</h2>
+        </FadeInSection>
         <div className="grid md:grid-cols-4 gap-6">
-          <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
-            <div className="h-40 bg-gradient-to-br from-amber-100 to-orange-200" />
-            <div className="p-4">
-              <h3 className="text-sm mb-2 font-medium">为什么我开始喜欢独处</h3>
-              <p className="text-xs text-gray-500 mb-2">独处不是逃避，而是重新整理自己。</p>
-              <span className="text-xs text-gray-400">生活 · 2024/05/12</span>
-            </div>
-          </article>
-          <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
-            <div className="h-40 bg-gradient-to-br from-blue-100 to-blue-200" />
-            <div className="p-4">
-              <h3 className="text-sm mb-2 font-medium">技术成长不是工具积累</h3>
-              <p className="text-xs text-gray-500 mb-2">理解问题的本质比学会用某个框架更重要。</p>
-              <span className="text-xs text-gray-400">技术 · 2024/05/10</span>
-            </div>
-          </article>
-          <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
-            <div className="h-40 bg-gradient-to-br from-green-100 to-green-200" />
-            <div className="p-4">
-              <h3 className="text-sm mb-2 font-medium">关于写作这件事</h3>
-              <p className="text-xs text-gray-500 mb-2">写作是思考的工具，也是与自己对话的方式。</p>
-              <span className="text-xs text-gray-400">生活 · 2024/05/08</span>
-            </div>
-          </article>
-          <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
-            <div className="h-40 bg-gradient-to-br from-purple-100 to-purple-200" />
-            <div className="p-4">
-              <h3 className="text-sm mb-2 font-medium">我如何理解系统设计</h3>
-              <p className="text-xs text-gray-500 mb-2">系统设计的核心是理解问题的本质。</p>
-              <span className="text-xs text-gray-400">技术 · 2024/05/05</span>
-            </div>
-          </article>
+          <FadeInSection delay={0}>
+            <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
+              <div className="h-40 bg-gradient-to-br from-amber-100 to-orange-200" />
+              <div className="p-4">
+                <h3 className="text-sm mb-2 font-medium">
+                  为什么我开始喜欢独处
+                </h3>
+                <p className="text-xs text-gray-500 mb-2">
+                  独处不是逃避，而是重新整理自己。
+                </p>
+                <span className="text-xs text-gray-400">生活 · 2024/05/12</span>
+              </div>
+            </article>
+          </FadeInSection>
+
+          <FadeInSection delay={0.1}>
+            <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
+              <div className="h-40 bg-gradient-to-br from-blue-100 to-blue-200" />
+              <div className="p-4">
+                <h3 className="text-sm mb-2 font-medium">
+                  技术成长不是工具积累
+                </h3>
+                <p className="text-xs text-gray-500 mb-2">
+                  理解问题的本质比学会用某个框架更重要。
+                </p>
+                <span className="text-xs text-gray-400">技术 · 2024/05/10</span>
+              </div>
+            </article>
+          </FadeInSection>
+
+          <FadeInSection delay={0.2}>
+            <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
+              <div className="h-40 bg-gradient-to-br from-green-100 to-green-200" />
+              <div className="p-4">
+                <h3 className="text-sm mb-2 font-medium">关于写作这件事</h3>
+                <p className="text-xs text-gray-500 mb-2">
+                  写作是思考的工具，也是与自己对话的方式。
+                </p>
+                <span className="text-xs text-gray-400">生活 · 2024/05/08</span>
+              </div>
+            </article>
+          </FadeInSection>
+
+          <FadeInSection delay={0.3}>
+            <article className="bg-white rounded-xl shadow-md overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all">
+              <div className="h-40 bg-gradient-to-br from-purple-100 to-purple-200" />
+              <div className="p-4">
+                <h3 className="text-sm mb-2 font-medium">我如何理解系统设计</h3>
+                <p className="text-xs text-gray-500 mb-2">
+                  系统设计的核心是理解问题的本质。
+                </p>
+                <span className="text-xs text-gray-400">技术 · 2024/05/05</span>
+              </div>
+            </article>
+          </FadeInSection>
         </div>
       </section>
 
