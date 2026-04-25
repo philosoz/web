@@ -7,7 +7,7 @@ const MINIMAX_API_URL = "https://api.minimaxi.chat/v1/text/chatcompletion_pro";
 
 export async function streamMiniMaxReply(messages: ChatMessage[]) {
   const apiKey = process.env.MINIMAX_API_KEY;
-  const model = process.env.MINIMAX_MODEL || "abab5.5-chat";
+  const model = process.env.MINIMAX_MODEL || "MiniMax-M2.7";
 
   if (!apiKey) {
     throw new Error("Server is missing MINIMAX_API_KEY.");
