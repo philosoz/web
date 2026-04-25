@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 
-export function ResumeUploader() {
+interface ResumeUploaderProps {
+  onSuccess?: () => void;
+}
+
+export function ResumeUploader({ onSuccess }: ResumeUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -32,6 +36,10 @@ export function ResumeUploader() {
           message: "上传成功！",
           url: data.url,
         });
+        
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
         setResult({
           success: false,

@@ -3,13 +3,100 @@
 import { ResumeUploader } from "@/components/ResumeUploader";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+
+interface Resume {
+  id: string;
+  fileName: string;
+  uploadedAt: string;
+  isActive: boolean;
+  url: string;
+}
 
 export default function ResumeUploadPage() {
   const router = useRouter();
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchResumes();
+  }, []);
+
+  const fetchResumes = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/resume/list");
+      const data = await response.json();
+      
+      if (data.resumes) {
+        setResumes(data.resumes);
+      }
+    } catch (error) {
+      console.error("获取简历列表失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setDefault = async (id: string) => {
+    try {
+      setActionLoading(id);
+      const response = await fetch("/api/resume/default", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResumes(data.resumes);
+      } else {
+        alert(data.error || "设置默认简历失败");
+      }
+    } catch (error) {
+      console.error("设置默认简历失败:", error);
+      alert("设置默认简历失败，请重试");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const deleteResume = async (filename: string) => {
+    if (!confirm("确定要删除这份简历吗？")) {
+      return;
+    }
+
+    try {
+      setActionLoading(filename);
+      const response = await fetch(`/api/resume/${filename}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResumes(data.resumes);
+      } else {
+        alert(data.error || "删除简历失败");
+      }
+    } catch (error) {
+      console.error("删除简历失败:", error);
+      alert("删除简历失败，请重试");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUploadSuccess = () => {
+    fetchResumes();
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F6F3]">
-      {/* Header */}
       <header className="flex justify-between items-center px-8 py-4 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-4">
           <button
@@ -38,7 +125,6 @@ export default function ResumeUploadPage() {
         <div className="text-sm text-gray-500">简历管理</div>
       </header>
 
-      {/* Content */}
       <main className="max-w-3xl mx-auto px-8 py-12">
         <div className="bg-white rounded-2xl shadow-md p-8">
           <h1 className="text-2xl font-medium mb-2">上传简历</h1>
@@ -46,7 +132,7 @@ export default function ResumeUploadPage() {
             上传您的简历文件，支持 PDF、Word 或图片格式
           </p>
 
-          <ResumeUploader />
+          <ResumeUploader onSuccess={handleUploadSuccess} />
 
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h2 className="text-lg font-medium mb-4">使用说明</h2>
@@ -71,14 +157,76 @@ export default function ResumeUploadPage() {
           </div>
 
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h2 className="text-lg font-medium mb-4">当前简历</h2>
-            <p className="text-sm text-gray-500">
-              简历将显示在简历页面，您可以随时上传新版本替换
-            </p>
+            <h2 className="text-lg font-medium mb-4">已上传的简历</h2>
+            
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="animate-spin text-3xl mb-2">⏳</div>
+                <p>加载中...</p>
+              </div>
+            ) : resumes.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <div className="text-4xl mb-2">📋</div>
+                <p>暂无上传的简历</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {resumes.map((resume) => (
+                  <div
+                    key={resume.id}
+                    className={`p-4 rounded-lg border ${
+                      resume.isActive
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    } transition-colors`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {resume.fileName}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          上传于 {new Date(resume.uploadedAt).toLocaleDateString("zh-CN", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        {resume.isActive && (
+                          <span className="px-2 py-1 bg-blue-500 text-white text-xs rounded font-medium">
+                            当前简历
+                          </span>
+                        )}
+                        {!resume.isActive && (
+                          <button
+                            onClick={() => setDefault(resume.id)}
+                            disabled={actionLoading === resume.id}
+                            className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {actionLoading === resume.id ? "设置中..." : "设为默认"}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            const filename = resume.url.split("/").pop() || "";
+                            deleteResume(filename);
+                          }}
+                          disabled={actionLoading === (resume.url.split("/").pop() || "")}
+                          className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {actionLoading === (resume.url.split("/").pop() || "") ? "删除中..." : "删除"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 快捷链接 */}
         <div className="mt-6 flex gap-4">
           <Link
             href="/resume"
