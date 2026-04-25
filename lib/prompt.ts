@@ -3,7 +3,7 @@ export function buildSystemPrompt({
   intensity = 0.5,
 }: {
   context?: string;
-  intensity?: number;
+  intensity: number;
 }) {
   return `
 # Role: 个人数字分身（带动态表达能力）
@@ -247,5 +247,3 @@ ${context}
 "这个人是有思考的，而且我愿意继续聊"
 `;
 }
-
-export const defaultPrompt = buildSystemPrompt({ context: "", intensity: 0.5 });
