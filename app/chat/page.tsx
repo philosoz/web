@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@/components/ai/useChat";
@@ -11,19 +11,22 @@ import { TypingIndicator } from "@/components/ai/TypingIndicator";
 export default function ChatPage() {
   const router = useRouter();
   const { messages, sendMessage, loading } = useChat();
+  const initialized = useRef(false);
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+    
     const params = new URLSearchParams(window.location.search);
     const message = params.get("message");
-    if (message && messages.length === 0) {
+    if (message) {
       sendMessage(message);
       window.history.replaceState({}, "", "/chat");
     }
-  }, []);
+  }, [sendMessage]);
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Header */}
       <header className="flex justify-between items-center px-8 py-4 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-4">
           <button
@@ -52,7 +55,6 @@ export default function ChatPage() {
         <div className="text-sm text-gray-500">和我聊聊</div>
       </header>
 
-      {/* Chat Area */}
       <div className="flex-1 overflow-y-auto p-8">
         <div className="max-w-3xl mx-auto">
           {messages.length === 0 && (
@@ -72,7 +74,6 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Input */}
       <ChatInput onSend={sendMessage} loading={loading} />
     </div>
   );
