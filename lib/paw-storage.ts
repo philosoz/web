@@ -48,8 +48,10 @@ export async function getPawCount(): Promise<number> {
   if (client) {
     try {
       const count = await client.get<string | number>(KV_KEY);
-      const numericCount = typeof count === "number" ? count : parseInt(String(count), 10);
-      if (!isNaN(numericCount)) {
+      const numericCount = typeof count === "number" 
+        ? count 
+        : (typeof count === "string" ? parseInt(count, 10) : NaN);
+      if (!isNaN(numericCount) && numericCount >= 0) {
         return numericCount;
       }
     } catch (err) {
