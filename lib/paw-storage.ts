@@ -8,15 +8,15 @@ const KV_KEY = "paw_count";
 let redis: Redis | null = null;
 
 function getRedis(): Redis | null {
-  if (!process.env.upstash_redis_rest_url || !process.env.upstash_redis_rest_token) {
+  const url = process.env.upstash_redis_rest_url || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.upstash_redis_rest_token || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
     return null;
   }
 
   if (!redis) {
-    redis = new Redis({
-      url: process.env.upstash_redis_rest_url,
-      token: process.env.upstash_redis_rest_token,
-    });
+    redis = new Redis({ url, token });
   }
 
   return redis;
