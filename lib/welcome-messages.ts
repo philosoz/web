@@ -79,12 +79,12 @@ export function generateWelcomeMessage(
 ): WelcomeMessage {
   if (profile.visitCount <= 1) {
     return {
-      greeting: "随便聊聊？",
+      greeting: "我在。\n\n你可以直接说你在想什么。",
       suggestions: [
-        "最近在折腾什么？",
-        "有什么新想法？",
-        "最近在看什么书？",
-        "随便聊聊"
+        "你平时在想什么？",
+        "你怎么看欲望？",
+        "AI 产品经理是做什么的？",
+        "你为什么会关注心理学？"
       ]
     };
   }
@@ -93,7 +93,7 @@ export function generateWelcomeMessage(
   const interests = profile.interests;
   
   const welcome: WelcomeMessage = {
-    greeting: "又来啦。这次想聊什么？",
+    greeting: "你又来了。\n\n说吧。",
     suggestions: generateSuggestionsByInterest(interests)
   };
   
@@ -121,12 +121,12 @@ function getGreetingByTime(): string {
 
 export function getDefaultWelcomeMessage(): WelcomeMessage {
   return {
-    greeting: "随便聊聊？",
+    greeting: "我在。\n\n你可以直接说你在想什么。",
     suggestions: [
-      "最近在折腾什么？",
-      "有什么新想法？",
-      "最近在看什么书？",
-      "随便聊聊"
+      "你平时在想什么？",
+      "你怎么看欲望？",
+      "AI 产品经理是做什么的？",
+      "你为什么会关注心理学？"
     ]
   };
 }

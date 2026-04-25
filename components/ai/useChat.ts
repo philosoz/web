@@ -278,7 +278,7 @@ export function useChat() {
         }
       }
 
-      const finalMessages = [...newMessages, ...chunks.map(c => ({ role: "assistant" as const, content: c, tags: [] as string[] }))];
+      const finalMessages = [...newMessages, ...chunks.map(c => ({ role: "assistant" as const, content: c, tags: autoTagMessage(c) }))];
       setMessages(finalMessages);
       const assistantTags = autoTagMessage(processedResponse);
       updateSessionTags(assistantTags);
