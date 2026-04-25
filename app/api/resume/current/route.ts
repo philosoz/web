@@ -26,7 +26,7 @@ async function readMetadata(): Promise<MetadataStore> {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const metadata = await readMetadata();
 

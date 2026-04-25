@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 interface Resume {
   id: string;
@@ -185,10 +186,13 @@ export default function ResumeActions() {
               )}
               {isImage(resume.url) && (
                 <div className="flex items-center justify-center h-full p-4">
-                  <img
+                  <Image
                     src={resume.url}
                     alt={resume.fileName}
+                    width={400}
+                    height={300}
                     className="max-w-full max-h-full object-contain"
+                    unoptimized
                   />
                 </div>
               )}

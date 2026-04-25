@@ -46,7 +46,7 @@ export function ResumeUploader({ onSuccess }: ResumeUploaderProps) {
           message: data.error || "上传失败",
         });
       }
-    } catch (error) {
+    } catch {
       setResult({
         success: false,
         message: "网络错误，请重试",

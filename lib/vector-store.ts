@@ -144,6 +144,7 @@ export class VectorStore {
     }
     
     // 按最终分数排序
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     return merged
       .sort((a, b) => b.finalScore - a.finalScore)
       .slice(0, topK)

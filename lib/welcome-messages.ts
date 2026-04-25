@@ -107,6 +107,7 @@ export function generateWelcomeMessage(
   return welcome;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getGreetingByTime(): string {
   const hour = new Date().getHours();
   if (hour < 6) return "夜深了，";

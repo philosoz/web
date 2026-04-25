@@ -97,6 +97,7 @@ export function semanticSimilarity(text1: string, text2: string): number {
 }
 
 // 扩展向量到指定维度（用于相似度计算）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function padVector(vector: number[], targetLength: number): number[] {
   if (vector.length === targetLength) return vector;
   if (vector.length > targetLength) return vector.slice(0, targetLength);
