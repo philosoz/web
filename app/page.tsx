@@ -5,6 +5,8 @@ import Link from "next/link";
 
 export default function HomePage() {
   const [pawCount, setPawCount] = useState(128);
+  const [showPlusOne, setShowPlusOne] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
 
   useEffect(() => {
     fetch("/api/paw")
@@ -18,14 +20,22 @@ export default function HomePage() {
   }, []);
 
   const handlePawClick = async () => {
+    if (isClicked) return;
+    
+    setIsClicked(true);
+    
     try {
       const res = await fetch("/api/paw", { method: "POST" });
       const data = await res.json();
-      if (data.count) {
+      if (data.count !== undefined) {
         setPawCount(data.count);
+        setShowPlusOne(true);
+        setTimeout(() => setShowPlusOne(false), 1000);
       }
-    } catch {
-      setPawCount(pawCount + 1);
+    } catch (error) {
+      console.error("Failed to increment paw count:", error);
+    } finally {
+      setTimeout(() => setIsClicked(false), 1000);
     }
   };
 
@@ -62,14 +72,23 @@ export default function HomePage() {
         <div className="relative">
           <div
             onClick={handlePawClick}
-            className="bg-gradient-to-br from-amber-100 to-orange-200 rounded-xl h-[300px] cursor-pointer flex items-center justify-center"
+            className={`bg-gradient-to-br from-amber-100 to-orange-200 rounded-xl h-[300px] cursor-pointer flex items-center justify-center transition-all ${
+              isClicked ? 'scale-95' : 'hover:scale-105'
+            }`}
           >
-            <p className="text-amber-800 text-sm bg-white/50 backdrop-blur-sm px-4 py-2 rounded-lg">
-              点击留下爪印 🐾
+            <p className="text-amber-800 text-sm bg-white/50 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2">
+              <span>点击留下爪印</span>
+              <span>🐾</span>
             </p>
           </div>
+          
           <div className="absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg shadow-md text-sm flex items-center gap-2">
             <span>今天有 {pawCount} 只小狗来过 🐾</span>
+            {showPlusOne && (
+              <span className="absolute -top-8 -right-2 text-green-500 font-bold text-lg animate-bounce">
+                +1
+              </span>
+            )}
           </div>
         </div>
       </section>

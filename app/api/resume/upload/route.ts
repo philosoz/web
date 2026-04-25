@@ -82,17 +82,8 @@ export async function POST(request: NextRequest) {
 
     const timestamp = Date.now();
     const uuid = crypto.randomUUID();
-    const originalExt = path.extname(file.name).toLowerCase();
-    const allowedExts = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
-    
-    if (!allowedExts.includes(originalExt)) {
-      return NextResponse.json(
-        { success: false, error: "不支持的文件扩展名" },
-        { status: 400 }
-      );
-    }
-    
-    const fileName = `${timestamp}-${uuid}${originalExt}`;
+    const fileExt = path.extname(file.name).toLowerCase();
+    const fileName = `${timestamp}-${uuid}${fileExt}`;
     const filePath = path.join(UPLOAD_DIR, fileName);
 
     const arrayBuffer = await file.arrayBuffer();
