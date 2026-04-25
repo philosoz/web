@@ -6,7 +6,7 @@ const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 3000];
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || (
-  process.env.NODE_ENV === "development" ? "*" : "https://yourdomain.com"
+  process.env.NODE_ENV === "development" ? "*" : process.env.PRODUCTION_DOMAIN || "https://www.deepself.top"
 );
 
 function getCorsHeaders() {
