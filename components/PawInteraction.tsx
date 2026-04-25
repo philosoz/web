@@ -1,69 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePawInteraction } from "@/hooks/usePawInteraction";
+import DogMood from "./DogMood";
 
-type Paw = {
-  id: number;
-  x: number;
-  y: number;
-};
+interface PawInteractionProps {
+  onCountUpdate?: (count: number) => void;
+}
 
-export default function PawInteraction({ onAddOne }: { onAddOne: () => void }) {
-  const [paws, setPaws] = useState<Paw[]>([]);
+export default function PawInteraction({ onCountUpdate }: PawInteractionProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { paws, dogMood, handleMouseClick, handleTouchStart } = usePawInteraction(containerRef);
 
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const newPaw: Paw = {
-      id: Date.now(),
-      x: e.clientX,
-      y: e.clientY,
-    };
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleMouseClick(e, onCountUpdate);
+  };
 
-    setPaws((prev) => {
-      const updated = [...prev, newPaw];
-      if (updated.length > 6) {
-        updated.shift();
-      }
-      return updated;
-    });
-
-    onAddOne();
-
-    setTimeout(() => {
-      setPaws((prev) => prev.filter((p) => p.id !== newPaw.id));
-    }, 3000);
+  const handleTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    handleTouchStart(e, onCountUpdate);
   };
 
   return (
     <div
       onClick={handleClick}
-      className="relative w-full h-[300px] cursor-crosshair bg-gradient-to-br from-amber-100 to-orange-200 rounded-xl overflow-hidden"
+      onTouchStart={handleTouch}
+      className="relative w-full h-[300px] cursor-pointer select-none bg-gradient-to-br from-amber-100 to-orange-200 rounded-xl overflow-hidden touch-none transition-all duration-200 hover:from-amber-200 hover:to-orange-300 hover:shadow-lg active:scale-[0.98] active:from-amber-200 active:to-orange-300"
+      style={{ pointerEvents: "auto" }}
     >
-      <div className="absolute inset-0 flex items-center justify-center">
-        <p className="text-amber-800 text-sm bg-white/50 backdrop-blur-sm px-4 py-2 rounded-lg">
-          点击留下爪印 🐾
-        </p>
-      </div>
-
-      <AnimatePresence>
+      <AnimatePresence mode="popLayout">
         {paws.map((paw) => (
           <motion.div
             key={paw.id}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 0.9, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute pointer-events-none text-2xl"
+            layout
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{
+              opacity: [0, 1, 0.9, 0.9, 0],
+              scale: [0.5, 1.2, 1, 1, 0.8],
+            }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{
+              duration: 3,
+              times: [0, 0.13, 0.2, 0.87, 1],
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="absolute pointer-events-none text-3xl select-none"
             style={{
-              left: paw.x - 12,
-              top: paw.y - 12,
-              transform: `rotate(${Math.random() * 30 - 15}deg)`,
+              left: paw.x - 16,
+              top: paw.y - 16,
+              transform: `rotate(${paw.rotation}deg) scale(${paw.scale})`,
             }}
           >
-            🐾
+            {paw.style}
           </motion.div>
         ))}
       </AnimatePresence>
+
+      <DogMood mood={dogMood} />
     </div>
   );
 }

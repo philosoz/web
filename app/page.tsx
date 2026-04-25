@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import PawInteraction from "@/components/PawInteraction";
 import PawCounter from "@/components/PawCounter";
@@ -8,7 +8,6 @@ import FadeInSection from "@/components/FadeInSection";
 
 export default function HomePage() {
   const [pawCount, setPawCount] = useState(128);
-  const [showPlusOne, setShowPlusOne] = useState(false);
 
   useEffect(() => {
     fetch("/api/paw")
@@ -21,23 +20,9 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  const handlePawClick = useCallback(async () => {
-    try {
-      const res = await fetch("/api/paw", { method: "POST" });
-      const data = await res.json();
-      if (data.count !== undefined) {
-        setPawCount(data.count);
-        setShowPlusOne(true);
-        setTimeout(() => setShowPlusOne(false), 1000);
-      }
-    } catch (error) {
-      console.error("Failed to increment paw count:", error);
-    }
-  }, []);
-
-  const handleCountUpdate = useCallback((count: number) => {
+  const handleCountUpdate = (count: number) => {
     setPawCount(count);
-  }, []);
+  };
 
   return (
     <div className="min-h-screen">
@@ -81,9 +66,9 @@ export default function HomePage() {
 
         <FadeInSection delay={0.2}>
           <div className="relative">
-            <PawInteraction onAddOne={handlePawClick} />
+            <PawInteraction onCountUpdate={handleCountUpdate} />
             <div className="absolute bottom-4 right-4">
-              <PawCounter initialCount={pawCount} onCountUpdate={handleCountUpdate} />
+              <PawCounter initialCount={pawCount} />
             </div>
           </div>
         </FadeInSection>
