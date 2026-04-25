@@ -4,16 +4,22 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ role, content }: ChatMessageProps) {
+  const fontFamily =
+    "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif";
+
   return (
-    <div className={`mb-5 ${role === "user" ? "text-right" : "text-left"}`}>
+    <div
+      className={`mb-4 ${role === "user" ? "text-right" : "text-left"}`}
+      style={{ fontFamily }}
+    >
       <div
-        className={`inline-block max-w-[85%] px-5 py-4 rounded-2xl text-left ${
+        className={`inline-block max-w-[720px] ${
           role === "user"
-            ? "bg-[#FFF8F0] text-[#5C4033] shadow-sm"
-            : "bg-[#FAF6F1] text-[#6B5B4F]"
+            ? "bg-[#F0EDE8] text-[#3D3D3D]"
+            : "bg-transparent text-[#333333]"
         }`}
       >
-        <p className="text-[15px] leading-7 whitespace-pre-wrap">{content}</p>
+        <p className="text-[15px] leading-[1.75] whitespace-pre-wrap">{content}</p>
       </div>
     </div>
   );

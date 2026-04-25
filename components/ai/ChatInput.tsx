@@ -24,22 +24,31 @@ export function ChatInput({ onSend, loading }: ChatInputProps) {
   };
 
   return (
-    <div className="border-t border-gray-200 p-4 bg-white">
-      <div className="max-w-3xl mx-auto flex gap-2">
+    <div className="border-t border-gray-100 p-6 bg-white">
+      <div className="max-w-[720px] mx-auto flex gap-3">
         <textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="你最近在想什么？"
+          placeholder="你在想什么？"
           disabled={loading}
           rows={1}
-          className="flex-1 border border-gray-200 rounded-md px-3 py-2 text-sm outline-none focus:border-gray-300 transition-colors resize-none disabled:opacity-50"
-          style={{ minHeight: "40px", maxHeight: "120px" }}
+          className="flex-1 border border-gray-200 rounded-lg px-4 py-3 text-sm outline-none transition-all duration-200 resize-none disabled:opacity-50 placeholder:text-gray-400 focus:border-gray-300 hover:border-gray-300"
+          style={{
+            minHeight: "48px",
+            maxHeight: "160px",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif",
+            boxShadow: "inset 0 1px 3px rgba(0, 0, 0, 0.04)",
+          }}
         />
         <button
           onClick={handleSend}
           disabled={loading || !value.trim()}
-          className="bg-[#8C9A8F] text-white px-4 py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-[#8C9A8F] text-white px-5 py-3 rounded-lg hover:opacity-90 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm"
+          style={{
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Inter', sans-serif",
+            minWidth: "60px",
+          }}
         >
           {loading ? "..." : "发送"}
         </button>

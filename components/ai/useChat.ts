@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ChatSession,
   loadAllSessions,
@@ -68,6 +68,70 @@ export function autoTagMessage(message: string): string[] {
   return tags;
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function splitIntoChunks(text: string): string[] {
+  const chunks = text
+    .split(/(?<=[。！？])/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (chunks.length === 1 && text.length > 20) {
+    const mid = Math.floor(text.length / 2);
+    let splitAt = mid;
+    for (let i = mid; i < text.length; i++) {
+      if (['，', '。', '、', '？', '！', ' ', '\n'].includes(text[i])) {
+        splitAt = i;
+        break;
+      }
+    }
+    return [
+      text.slice(0, splitAt),
+      text.slice(splitAt)
+    ];
+  }
+
+  return chunks;
+}
+
+function injectHumanNoise(text: string): string {
+  if (Math.random() < 0.15 && text.length > 30) {
+    const noises = [
+      "\n\n…不过这个我可能说得不太准。",
+      "\n\n…等等，我再想想。",
+      "\n\n…算了，换个角度说。"
+    ];
+    return text + noises[Math.floor(Math.random() * noises.length)];
+  }
+  return text;
+}
+
+async function streamText(
+  fullText: string,
+  onUpdate: (content: string) => void
+): Promise<void> {
+  let current = "";
+
+  for (let i = 0; i < fullText.length; i++) {
+    current += fullText[i];
+    onUpdate(current);
+
+    let baseDelay = 25 + Math.random() * 50;
+
+    if ("，。！？".includes(fullText[i])) {
+      baseDelay += 120;
+    }
+
+    if (Math.random() < 0.08) {
+      baseDelay += 200 + Math.random() * 200;
+    }
+
+    await delay(baseDelay);
+  }
+}
+
 export function useChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,6 +139,9 @@ export function useChat() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [welcomeMessage, setWelcomeMessage] = useState<WelcomeMessage>(getDefaultWelcomeMessage());
+  const [isThinking, setIsThinking] = useState(false);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const userProfile = getUserProfile();
@@ -120,7 +187,12 @@ export function useChat() {
   }, [currentSessionId, sessions]);
 
   const sendMessage = useCallback(async (input: string) => {
-    if (!input.trim()) return;
+    if (!input.trim() || isThinking) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
 
     const messageTags = autoTagMessage(input);
     const newMessages = [...messages, { role: "user" as const, content: input, tags: messageTags }];
@@ -128,6 +200,7 @@ export function useChat() {
     updateSessionTags(messageTags);
     saveCurrentSession(newMessages);
     setLoading(true);
+    setIsThinking(true);
 
     try {
       const res = await fetch("/api/chat", {
@@ -136,6 +209,7 @@ export function useChat() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ messages: newMessages }),
+        signal: abortControllerRef.current.signal,
       });
 
       if (!res.ok) {
@@ -149,30 +223,64 @@ export function useChat() {
         throw new Error("No reader available");
       }
 
-      let assistantMessage = "";
-      let finalAssistantMessage = "";
+      let fullResponse = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        assistantMessage += chunk;
-        finalAssistantMessage = assistantMessage;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-        setMessages((prev: Message[]) => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage?.role === "assistant") {
-            return [...prev.slice(0, -1), { ...lastMessage, content: assistantMessage }];
-          } else {
-            return [...prev, { role: "assistant" as const, content: assistantMessage }];
+        for (const line of lines) {
+          if (line.startsWith("data:")) {
+            const dataStr = line.slice(5).trim();
+            if (dataStr === "[DONE]") continue;
+
+            try {
+              const json = JSON.parse(dataStr);
+              if (json.choices?.[0]?.delta?.content) {
+                fullResponse += json.choices[0].delta.content;
+              }
+            } catch {
+              // skip
+            }
           }
-        });
+        }
       }
 
-      const assistantTags = autoTagMessage(finalAssistantMessage);
-      const finalMessages = [...newMessages, { role: "assistant" as const, content: finalAssistantMessage, tags: assistantTags }];
+      setIsThinking(false);
+      setLoading(true);
+
+      const processedResponse = injectHumanNoise(fullResponse);
+      const chunks = splitIntoChunks(processedResponse);
+
+      for (let i = 0; i < chunks.length; i++) {
+        setMessages((prev: Message[]) => [
+          ...prev,
+          { role: "assistant" as const, content: "" }
+        ]);
+
+        await streamText(chunks[i], (content) => {
+          setMessages((prev: Message[]) => {
+            const latest = prev[prev.length - 1];
+            if (latest?.role === "assistant") {
+              return [...prev.slice(0, -1), { ...latest, content }];
+            }
+            return prev;
+          });
+        });
+
+        if (i < chunks.length - 1) {
+          await delay(300 + Math.random() * 600);
+        }
+      }
+
+      const finalMessages = [...newMessages, ...chunks.map(c => ({ role: "assistant" as const, content: c, tags: [] as string[] }))];
       setMessages(finalMessages);
+      const assistantTags = autoTagMessage(processedResponse);
       updateSessionTags(assistantTags);
       saveCurrentSession(finalMessages);
       
@@ -180,21 +288,29 @@ export function useChat() {
       const interests = analyzeUserInterests(allSessions);
       updateUserProfile({ interests });
       setProfile(getUserProfile());
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      setIsThinking(false);
       setMessages((prev: Message[]) => {
         const errorMessages: Message[] = [
           ...prev,
-          { role: "assistant" as const, content: "抱歉，出现了一些问题。请稍后再试。" },
+          { role: "assistant" as const, content: "嗯…出了点问题。" }
         ];
         saveCurrentSession(errorMessages);
         return errorMessages;
       });
     } finally {
       setLoading(false);
+      setIsThinking(false);
     }
-  }, [messages, saveCurrentSession, updateSessionTags]);
+  }, [messages, saveCurrentSession, updateSessionTags, isThinking]);
 
   const switchSession = useCallback((sessionId: string) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     const targetSession = sessions.find(s => s.id === sessionId);
     if (targetSession) {
       saveCurrentSession(messages);
@@ -205,6 +321,9 @@ export function useChat() {
   }, [sessions, messages, saveCurrentSession]);
 
   const createNewSession = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     saveCurrentSession(messages);
     const newSession = createSession();
     setMessages(newSession.messages);
@@ -215,6 +334,10 @@ export function useChat() {
 
   const deleteCurrentSession = useCallback(() => {
     if (!currentSessionId) return;
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     
     deleteSession(currentSessionId);
     const updatedSessions = loadAllSessions();
@@ -245,13 +368,12 @@ export function useChat() {
   const clearCurrentSession = useCallback(() => {
     if (!currentSessionId) return;
     
-    const defaultMessage: Message = {
-      role: "assistant",
-      content: "你好！我是AI助手，有什么可以帮助你的吗？"
-    };
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     
-    setMessages([defaultMessage]);
-    updateSession(currentSessionId, { messages: [defaultMessage] });
+    setMessages([]);
+    updateSession(currentSessionId, { messages: [] });
     const updatedSessions = loadAllSessions();
     setSessions(updatedSessions);
   }, [currentSessionId]);
@@ -260,6 +382,7 @@ export function useChat() {
     messages,
     sendMessage,
     loading,
+    isThinking,
     sessions,
     currentSessionId,
     switchSession,

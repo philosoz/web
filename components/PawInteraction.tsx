@@ -30,6 +30,9 @@ export default function PawInteraction({ onCountUpdate }: PawInteractionProps) {
       className="relative w-full h-[300px] cursor-pointer select-none bg-gradient-to-br from-amber-100 to-orange-200 rounded-xl overflow-hidden touch-none transition-all duration-200 hover:from-amber-200 hover:to-orange-300 hover:shadow-lg active:scale-[0.98] active:from-amber-200 active:to-orange-300"
       style={{ pointerEvents: "auto" }}
     >
+      <p className="absolute inset-0 flex items-center justify-center text-amber-700/60 text-lg font-medium pointer-events-none">
+        点击这里，留下你的痕迹吧
+      </p>
       <AnimatePresence mode="popLayout">
         {paws.map((paw) => (
           <motion.div
